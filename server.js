@@ -12,6 +12,9 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '123456';
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// 1. Phục vụ các file giao diện tĩnh trong thư mục public (index.html, app.js...)
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Middleware kiểm tra mật khẩu Admin
@@ -307,6 +310,11 @@ app.post('/api/volunteers/additional-info', verifyAdmin, (req, res) => {
     });
 });
 
+// --- ROUTE TRẢ VỀ CỔNG GIAO DIỆN MẶC ĐỊNH ---
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 app.listen(PORT, () => {
-    console.log(`Server đang chạy tại address: http://localhost:${PORT}`);
+    console.log(`Server đang chạy tại port: ${PORT}`);
 });
