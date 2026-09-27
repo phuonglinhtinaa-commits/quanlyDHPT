@@ -6,15 +6,15 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// MẬT KHẨU QUẢN TRỊ (Có thể đổi tùy ý)
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'OLPCmainhachung';
+// MẬT KHẨU QUẢN TRỊ (Có thể đổi tùy ý hoặc đổi qua Environment Variable trên Render)
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'OPTC152179';
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 1. Phục vụ các file giao diện tĩnh trong thư mục public (index.html, app.js...)
+// 1. Phục vụ các file giao diện tĩnh trong thư mục public
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Middleware kiểm tra mật khẩu Admin
@@ -24,6 +24,18 @@ function verifyAdmin(req, res, next) {
         return res.status(401).json({ error: 'Mật khẩu quản trị không chính xác!' });
     }
     next();
+}
+
+// Helper: Chuẩn hóa chuỗi văn bản (Bỏ dấu tiếng Việt, viết thường, xóa khoảng trắng thừa)
+function normalizeText(str) {
+    if (!str) return '';
+    return str
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd')
+        .replace(/\s+/g, ' ')
+        .trim();
 }
 
 // Khởi tạo CSDL SQLite
@@ -137,7 +149,7 @@ app.post('/api/volunteers/create', verifyAdmin, (req, res) => {
     });
 });
 
-// 3. Xóa toàn bộ hồ sơ TNV / dòng dữ liệu sai (Cần Mật Khẩu Admin)
+// 3. Xóa toàn bộ hồ sơ TNV (Cần Mật Khẩu Admin)
 app.delete('/api/volunteers/:id', verifyAdmin, (req, res) => {
     const { id } = req.params;
     const sql = `DELETE FROM volunteers WHERE id = ?`;
@@ -148,7 +160,7 @@ app.delete('/api/volunteers/:id', verifyAdmin, (req, res) => {
     });
 });
 
-// 4. Xóa lẻ 1 mục sai trong 1 dòng (1 buổi TN, 1 lỗi vi phạm, 1 chiến dịch...) (Cần Mật Khẩu Admin)
+// 4. Xóa lẻ 1 mục sai trong 1 dòng (Cần Mật Khẩu Admin)
 app.delete('/api/volunteers/:id/item', verifyAdmin, (req, res) => {
     const { id } = req.params;
     const { type, index } = req.body;
@@ -190,7 +202,7 @@ app.delete('/api/volunteers/:id/item', verifyAdmin, (req, res) => {
     });
 });
 
-// 5. Form 1: Ghi nhận buổi tình nguyện (CÔNG KHAI cho TNV điền)
+// 5. Form 1: Ghi nhận buổi tình nguyện (CÔNG KHAI cho TNV điền - Có chống trùng lặp na ná nhau)
 app.post('/api/volunteers/activity', (req, res) => {
     const { fullName, studentId, jobContent, date } = req.body;
     if (!fullName || !studentId || !jobContent || !date) {
@@ -200,8 +212,21 @@ app.post('/api/volunteers/activity', (req, res) => {
     getOrCreateVolunteer(fullName, studentId, (err, volunteer) => {
         if (err) return res.status(500).json({ error: err.message });
 
+        const normalizedNewJob = normalizeText(jobContent);
+
+        // Kiểm tra xem đã có buổi tình nguyện trùng ngày và trùng tên hoạt động na ná nhau chưa
+        const isDuplicate = volunteer.activities.some(act => {
+            const sameDate = act.date === date;
+            const sameJob = normalizeText(act.jobContent) === normalizedNewJob;
+            return sameDate && sameJob;
+        });
+
+        if (isDuplicate) {
+            return res.status(400).json({ error: 'Bạn đã điền buổi tình nguyện này trước đó rồi!' });
+        }
+
         const updatedActivities = [...volunteer.activities, { jobContent, date }];
-        const updatedCount = volunteer.activityCount + 1;
+        const updatedCount = updatedActivities.length;
 
         const updateSql = `UPDATE volunteers SET activities = ?, activityCount = ?, fullName = ? WHERE id = ?`;
         db.run(updateSql, [JSON.stringify(updatedActivities), updatedCount, fullName.trim(), volunteer.id], function (err) {
@@ -211,8 +236,8 @@ app.post('/api/volunteers/activity', (req, res) => {
     });
 });
 
-// 6. Form 2: Ghi nhận Chiến dịch lớn (CẦN MẬT KHẨU ADMIN)
-app.post('/api/volunteers/campaign', verifyAdmin, (req, res) => {
+// 6. Form 2: Ghi nhận Chiến dịch lớn (CÔNG KHAI cho TNV điền - ĐÃ BỎ MẬT KHẨU ADMIN)
+app.post('/api/volunteers/campaign', (req, res) => {
     const { fullName, studentId, campaignName } = req.body;
     if (!fullName || !studentId || !campaignName) {
         return res.status(400).json({ error: 'Vui lòng điền đầy đủ thông tin!' });
@@ -221,8 +246,16 @@ app.post('/api/volunteers/campaign', verifyAdmin, (req, res) => {
     getOrCreateVolunteer(fullName, studentId, (err, volunteer) => {
         if (err) return res.status(500).json({ error: err.message });
 
+        const normalizedNewCampaign = normalizeText(campaignName);
+
+        // Chống điền trùng cùng 1 chiến dịch lớn
+        const isDuplicate = volunteer.campaigns.some(camp => normalizeText(camp) === normalizedNewCampaign);
+        if (isDuplicate) {
+            return res.status(400).json({ error: 'Bạn đã được ghi nhận chiến dịch này rồi!' });
+        }
+
         const updatedCampaigns = [...volunteer.campaigns, campaignName];
-        const updatedCount = volunteer.campaignCount + 1;
+        const updatedCount = updatedCampaigns.length;
 
         const updateSql = `UPDATE volunteers SET campaigns = ?, campaignCount = ?, fullName = ? WHERE id = ?`;
         db.run(updateSql, [JSON.stringify(updatedCampaigns), updatedCount, fullName.trim(), volunteer.id], function (err) {
@@ -310,7 +343,7 @@ app.post('/api/volunteers/additional-info', verifyAdmin, (req, res) => {
     });
 });
 
-// --- ROUTE TRẢ VỀ CỔNG GIAO DIỆN MẶC ĐỊNH ---
+// Route trả về giao diện mặc định
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
