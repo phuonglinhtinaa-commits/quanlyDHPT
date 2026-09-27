@@ -7,7 +7,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // MẬT KHẨU QUẢN TRỊ (Có thể đổi tùy ý)
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '123456';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'OLPCmainhachung';
 
 // Middleware
 app.use(cors());
