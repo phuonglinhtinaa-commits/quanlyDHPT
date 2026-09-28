@@ -6,7 +6,7 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// MẬT KHẨU QUẢN TRỊ (Có thể đổi qua Environment Variable trên Render)
+// MẬT KHẨU QUẢN TRỊ CỐ ĐỊNH (Không phân biệt chữ hoa/thường hay khoảng trắng)
 const ADMIN_PASSWORD = 'OPTC140921';
 
 // Middleware
@@ -14,10 +14,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Phục vụ file giao diện tĩnh
+// Phục vụ tĩnh giao diện
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Middleware kiểm tra mật khẩu Admin
 // Middleware kiểm tra mật khẩu Admin
 function verifyAdmin(req, res, next) {
     const adminPassword = req.headers['x-admin-password'];
@@ -27,288 +26,298 @@ function verifyAdmin(req, res, next) {
     next();
 }
 
-// Helper: Chuẩn hóa chuỗi văn bản
-function normalizeText(str) {
+// Chuẩn hóa chuỗi tìm kiếm / so sánh
+function normalizeString(str) {
     if (!str) return '';
-    return str
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/đ/g, 'd')
-        .replace(/^(mua\s+he\s+xanh|he\s+xanh)$/i, 'hè xanh')
-        .replace(/\s+/g, ' ')
-        .trim();
+    return str.toString().trim().toLowerCase();
 }
 
-// Khởi tạo CSDL SQLite
-const db = new sqlite3.Database('./tnv_database.sqlite', (err) => {
-    if (err) console.error('Lỗi kết nối CSDL:', err.message);
-    else console.log('Đã kết nối CSDL SQLite thành công.');
+// Khởi tạo Cơ sở dữ liệu SQLite
+const db = new sqlite3.Database('./database.sqlite', (err) => {
+    if (err) {
+        console.error('Lỗi kết nối CSDL:', err.message);
+    } else {
+        console.log('Đã kết nối thành công với CSDL SQLite.');
+        initDatabase();
+    }
 });
 
-// Tạo bảng (Thêm trường isApproved và createdAt)
-db.serialize(() => {
-    db.run(`
-        CREATE TABLE IF NOT EXISTS volunteers (
+function initDatabase() {
+    db.serialize(() => {
+        // Bảng Tình nguyện viên chính
+        db.run(`CREATE TABLE IF NOT EXISTS volunteers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             fullName TEXT NOT NULL,
             studentId TEXT NOT NULL UNIQUE,
-            activities JSON DEFAULT '[]',
-            activityCount INTEGER DEFAULT 0,
-            violations JSON DEFAULT '[]',
-            violationCount INTEGER DEFAULT 0,
-            campaigns JSON DEFAULT '[]',
-            campaignCount INTEGER DEFAULT 0,
-            achievements JSON DEFAULT '[]',
-            generalNotes JSON DEFAULT '[]',
             isApproved INTEGER DEFAULT 0,
             createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    `);
-});
+        )`);
 
-// TỰ ĐỘNG XÓA CÁC HỒ SƠ CHƯA DUYỆT SẠCH SẼ SAU 24 GIỜ (Chạy định kỳ mỗi giờ)
-setInterval(() => {
-    const cleanupSql = `
-        DELETE FROM volunteers 
-        WHERE isApproved = 0 
-        AND datetime(createdAt) <= datetime('now', '-24 hours')
-    `;
-    db.run(cleanupSql, function (err) {
-        if (!err && this.changes > 0) {
-            console.log(`Đã tự động xóa ${this.changes} hồ sơ khởi tạo chưa được duyệt quá 24h.`);
-        }
-    });
-}, 3600000); // 1 giờ kiểm tra 1 lần
+        // Bảng Buổi tình nguyện (Form 1)
+        db.run(`CREATE TABLE IF NOT EXISTS activities (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            volunteerId INTEGER NOT NULL,
+            jobContent TEXT NOT NULL,
+            date TEXT NOT NULL,
+            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (volunteerId) REFERENCES volunteers (id) ON DELETE CASCADE
+        )`);
 
-// Helper DB
-function getVolunteerById(id, callback) {
-    db.get(`SELECT * FROM volunteers WHERE id = ?`, [id], (err, row) => {
-        if (err || !row) return callback(err || new Error('Không tìm thấy TNV'));
-        row.activities = JSON.parse(row.activities || '[]');
-        row.violations = JSON.parse(row.violations || '[]');
-        row.campaigns = JSON.parse(row.campaigns || '[]');
-        row.achievements = JSON.parse(row.achievements || '[]');
-        row.generalNotes = JSON.parse(row.generalNotes || '[]');
-        callback(null, row);
+        // Bảng Chiến dịch lớn (Form 2)
+        db.run(`CREATE TABLE IF NOT EXISTS campaigns (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            volunteerId INTEGER NOT NULL,
+            campaignName TEXT NOT NULL,
+            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (volunteerId) REFERENCES volunteers (id) ON DELETE CASCADE
+        )`);
+
+        // Bảng Vi phạm (Form 3)
+        db.run(`CREATE TABLE IF NOT EXISTS violations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            volunteerId INTEGER NOT NULL,
+            error TEXT NOT NULL,
+            date TEXT NOT NULL,
+            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (volunteerId) REFERENCES volunteers (id) ON DELETE CASCADE
+        )`);
+
+        // Bảng Thành tích (Form 3)
+        db.run(`CREATE TABLE IF NOT EXISTS achievements (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            volunteerId INTEGER NOT NULL,
+            content TEXT NOT NULL,
+            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (volunteerId) REFERENCES volunteers (id) ON DELETE CASCADE
+        )`);
+
+        // Bảng Ghi chú (Form 3)
+        db.run(`CREATE TABLE IF NOT EXISTS general_notes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            volunteerId INTEGER NOT NULL,
+            content TEXT NOT NULL,
+            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (volunteerId) REFERENCES volunteers (id) ON DELETE CASCADE
+        )`);
     });
 }
 
-// --- API ENDPOINTS ---
+// Tác vụ dọn dẹp định kỳ: Tự động xóa tài khoản chưa duyệt quá 24h
+setInterval(() => {
+    const query = `DELETE FROM volunteers WHERE isApproved = 0 AND createdAt <= datetime('now', '-1 day')`;
+    db.run(query, function(err) {
+        if (!err && this.changes > 0) {
+            console.log(`[TỰ ĐỘNG DỌN DẸP] Đã xóa ${this.changes} tài khoản chưa duyệt quá 24 giờ.`);
+        }
+    });
+}, 60 * 60 * 1000); // 1 giờ kiểm tra 1 lần
 
-// 1. Khởi tạo TNV mới (KHÔNG CẦN MẬT KHẨU - Mặc định 0 buổi, Chờ duyệt)
+// Helper: Tìm TNV theo Tên hoặc MSSV
+function findVolunteer(fullName, studentId, callback) {
+    const cleanName = normalizeString(fullName);
+    const cleanId = normalizeString(studentId);
+
+    db.all(`SELECT * FROM volunteers`, [], (err, rows) => {
+        if (err) return callback(err, null);
+        const match = rows.find(v => {
+            const matchId = cleanId && normalizeString(v.studentId) === cleanId;
+            const matchName = cleanName && normalizeString(v.fullName) === cleanName;
+            return matchId || matchName;
+        });
+        callback(null, match);
+    });
+}
+
+// --- API ROUTES ---
+
+// Form 0: Đăng ký khởi tạo TNV mới
 app.post('/api/volunteers/register', (req, res) => {
     const { fullName, studentId } = req.body;
     if (!fullName || !studentId) {
         return res.status(400).json({ error: 'Vui lòng điền đầy đủ Họ tên và MSSV!' });
     }
 
-    const sql = `INSERT INTO volunteers (fullName, studentId, isApproved) VALUES (?, ?, 0)`;
-    db.run(sql, [fullName.trim(), studentId.trim()], function (err) {
-        if (err) {
-            if (err.message.includes('UNIQUE constraint failed')) {
-                return res.status(400).json({ error: `MSSV "${studentId.trim()}" đã tồn tại trên hệ thống!` });
-            }
-            return res.status(500).json({ error: err.message });
+    const cleanId = normalizeString(studentId);
+    db.get(`SELECT * FROM volunteers WHERE LOWER(TRIM(studentId)) = ?`, [cleanId], (err, row) => {
+        if (err) return res.status(500).json({ error: 'Lỗi CSDL!' });
+        if (row) {
+            return res.status(400).json({ error: 'MSSV này đã tồn tại trong hệ thống!' });
         }
-        res.json({ message: 'Khởi tạo thành công! Hồ sơ đang ở trạng thái chờ Admin duyệt (Sẽ tự hủy sau 24h nếu không duyệt).' });
-    });
-});
 
-// 2. Lấy toàn bộ danh sách (Bảo mật - Cần Admin)
-app.get('/api/volunteers', verifyAdmin, (req, res) => {
-    db.all(`SELECT * FROM volunteers ORDER BY isApproved ASC, id ASC`, [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        const data = rows.map(row => ({
-            ...row,
-            activities: JSON.parse(row.activities || '[]'),
-            violations: JSON.parse(row.violations || '[]'),
-            campaigns: JSON.parse(row.campaigns || '[]'),
-            achievements: JSON.parse(row.achievements || '[]'),
-            generalNotes: JSON.parse(row.generalNotes || '[]')
-        }));
-        res.json(data);
-    });
-});
-
-// 3. Admin Duyệt Hồ Sơ Khởi Tạo (Cần Admin)
-app.post('/api/volunteers/:id/approve', verifyAdmin, (req, res) => {
-    const { id } = req.params;
-    db.run(`UPDATE volunteers SET isApproved = 1 WHERE id = ?`, [id], function (err) {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: 'Đã duyệt hồ sơ Tình nguyện viên chính thức!' });
-    });
-});
-
-// 4. Tra cứu thành tích cá nhân (Chỉ hiện khi đã được duyệt)
-app.post('/api/volunteers/my-profile', (req, res) => {
-    const { fullName, studentId } = req.body;
-    if (!fullName || !studentId) {
-        return res.status(400).json({ error: 'Vui lòng nhập đầy đủ Họ tên và MSSV!' });
-    }
-
-    db.get(
-        `SELECT * FROM volunteers WHERE studentId = ? AND LOWER(fullName) = LOWER(?)`,
-        [studentId.trim(), fullName.trim()],
-        (err, row) => {
-            if (err) return res.status(500).json({ error: err.message });
-            if (!row) {
-                return res.status(404).json({ error: 'Không tìm thấy thông tin TNV phù hợp!' });
+        db.run(`INSERT INTO volunteers (fullName, studentId, isApproved) VALUES (?, ?, 0)`, 
+            [fullName.trim(), studentId.trim()], 
+            function(err) {
+                if (err) return res.status(500).json({ error: 'Không thể đăng ký!' });
+                res.json({ message: 'Đăng ký khởi tạo thành công! Vui lòng chờ Admin duyệt trong vòng 24h.' });
             }
-            if (row.isApproved === 0) {
-                return res.status(403).json({ error: 'Hồ sơ của bạn đang chờ Admin duyệt. Chưa thể tra cứu thành tích!' });
-            }
-            res.json({
-                ...row,
-                activities: JSON.parse(row.activities || '[]'),
-                violations: JSON.parse(row.violations || '[]'),
-                campaigns: JSON.parse(row.campaigns || '[]'),
-                achievements: JSON.parse(row.achievements || '[]'),
-                generalNotes: JSON.parse(row.generalNotes || '[]')
-            });
-        }
-    );
+        );
+    });
 });
 
-// 5. Form 1: Điền buổi tình nguyện (CÔNG KHAI - Chỉ áp dụng cho hồ sơ đã duyệt)
+// Form 1: Ghi nhận buổi TN
 app.post('/api/volunteers/activity', (req, res) => {
     const { fullName, studentId, jobContent, date } = req.body;
     if (!fullName || !studentId || !jobContent || !date) {
-        return res.status(400).json({ error: 'Vui lòng điền đầy đủ thông tin!' });
+        return res.status(400).json({ error: 'Vui lòng nhập đầy đủ thông tin!' });
     }
 
-    db.get(`SELECT * FROM volunteers WHERE studentId = ?`, [studentId.trim()], (err, volunteer) => {
-        if (err) return res.status(500).json({ error: err.message });
-        if (!volunteer) {
-            return res.status(404).json({ error: 'TNV chưa tồn tại. Vui lòng tạo khởi tạo TNV trước!' });
-        }
-        if (volunteer.isApproved === 0) {
-            return res.status(403).json({ error: 'Hồ sơ của bạn đang chờ Admin duyệt, chưa thể ghi nhận buổi tình nguyện!' });
+    findVolunteer(fullName, studentId, (err, volunteer) => {
+        if (err || !volunteer) {
+            return res.status(404).json({ error: 'Không tìm thấy TNV. Vui lòng kiểm tra lại Họ tên/MSSV hoặc đăng ký khởi tạo!' });
         }
 
-        volunteer.activities = JSON.parse(volunteer.activities || '[]');
-        const normJob = normalizeText(jobContent);
-        const isDuplicate = volunteer.activities.some(act => act.date === date && normalizeText(act.jobContent) === normJob);
-
-        if (isDuplicate) {
-            return res.status(400).json({ error: 'Bạn đã ghi nhận buổi tình nguyện này trước đó rồi!' });
-        }
-
-        const updatedActivities = [...volunteer.activities, { jobContent, date }];
-        db.run(
-            `UPDATE volunteers SET activities = ?, activityCount = ?, fullName = ? WHERE id = ?`,
-            [JSON.stringify(updatedActivities), updatedActivities.length, fullName.trim(), volunteer.id],
-            (err) => {
-                if (err) return res.status(500).json({ error: err.message });
-                res.json({ message: 'Cập nhật buổi tình nguyện thành công!' });
+        db.run(`INSERT INTO activities (volunteerId, jobContent, date) VALUES (?, ?, ?)`,
+            [volunteer.id, jobContent.trim(), date],
+            function(err) {
+                if (err) return res.status(500).json({ error: 'Lỗi ghi nhận buổi tình nguyện!' });
+                res.json({ message: 'Thêm buổi tình nguyện thành công!' });
             }
         );
     });
 });
 
-// 6. Form 2: Điền chiến dịch lớn (CÔNG KHAI)
+// Form 2: Ghi nhận Chiến dịch lớn
 app.post('/api/volunteers/campaign', (req, res) => {
     const { fullName, studentId, campaignName } = req.body;
     if (!fullName || !studentId || !campaignName) {
-        return res.status(400).json({ error: 'Vui lòng điền đầy đủ thông tin!' });
+        return res.status(400).json({ error: 'Vui lòng nhập đầy đủ thông tin!' });
     }
 
-    db.get(`SELECT * FROM volunteers WHERE studentId = ?`, [studentId.trim()], (err, volunteer) => {
-        if (err) return res.status(500).json({ error: err.message });
-        if (!volunteer) {
-            return res.status(404).json({ error: 'TNV chưa tồn tại. Vui lòng tạo khởi tạo TNV trước!' });
-        }
-        if (volunteer.isApproved === 0) {
-            return res.status(403).json({ error: 'Hồ sơ của bạn đang chờ Admin duyệt, chưa thể ghi nhận chiến dịch!' });
+    findVolunteer(fullName, studentId, (err, volunteer) => {
+        if (err || !volunteer) {
+            return res.status(404).json({ error: 'Không tìm thấy TNV trong hệ thống!' });
         }
 
-        volunteer.campaigns = JSON.parse(volunteer.campaigns || '[]');
-        const normCamp = normalizeText(campaignName);
-        const isDuplicate = volunteer.campaigns.some(camp => normalizeText(camp) === normCamp);
-
-        if (isDuplicate) {
-            return res.status(400).json({ error: 'Bạn đã được ghi nhận chiến dịch này rồi!' });
-        }
-
-        const updatedCampaigns = [...volunteer.campaigns, campaignName];
-        db.run(
-            `UPDATE volunteers SET campaigns = ?, campaignCount = ?, fullName = ? WHERE id = ?`,
-            [JSON.stringify(updatedCampaigns), updatedCampaigns.length, fullName.trim(), volunteer.id],
-            (err) => {
-                if (err) return res.status(500).json({ error: err.message });
-                res.json({ message: 'Ghi nhận chiến dịch thành công!' });
+        db.run(`INSERT INTO campaigns (volunteerId, campaignName) VALUES (?, ?)`,
+            [volunteer.id, campaignName.trim()],
+            function(err) {
+                if (err) return res.status(500).json({ error: 'Lỗi ghi nhận chiến dịch!' });
+                res.json({ message: 'Ghi nhận chiến dịch lớn thành công!' });
             }
         );
     });
 });
 
-// 7. Form 3: Nhập thông tin bổ sung Vi phạm / Thành tích / Ghi chú (CẦN ADMIN)
+// Form 3: Cập nhật thông tin bổ sung (Cần Admin)
 app.post('/api/volunteers/additional-info', verifyAdmin, (req, res) => {
     const { fullName, studentId, category, violationError, violationDate, achievementContent, noteContent } = req.body;
+    
+    if (!fullName) {
+        return res.status(400).json({ error: 'Vui lòng nhập tên Tình nguyện viên!' });
+    }
 
-    if (!fullName || !category) return res.status(400).json({ error: 'Vui lòng điền đủ thông tin!' });
-
-    const sqlSearch = studentId 
-        ? `SELECT * FROM volunteers WHERE studentId = ?`
-        : `SELECT * FROM volunteers WHERE LOWER(fullName) = LOWER(?)`;
-    const params = studentId ? [studentId.trim()] : [fullName.trim()];
-
-    db.all(sqlSearch, params, (err, rows) => {
-        if (err || rows.length === 0) {
-            return res.status(404).json({ error: 'Không tìm thấy TNV trong hệ thống!' });
+    findVolunteer(fullName, studentId, (err, volunteer) => {
+        if (err || !volunteer) {
+            return res.status(404).json({ error: 'Không tìm thấy Tình nguyện viên!' });
         }
-
-        const volunteer = rows[0];
-        volunteer.violations = JSON.parse(volunteer.violations || '[]');
-        volunteer.achievements = JSON.parse(volunteer.achievements || '[]');
-        volunteer.generalNotes = JSON.parse(volunteer.generalNotes || '[]');
-
-        let updateSql = '', updateParams = [];
 
         if (category === 'violation') {
-            if (!violationError || !violationDate) {
-                return res.status(400).json({ error: 'Vui lòng nhập Tên lỗi và Ngày vi phạm!' });
-            }
-            const updated = [...volunteer.violations, { error: violationError, date: violationDate }];
-            updateSql = `UPDATE volunteers SET violations = ?, violationCount = ? WHERE id = ?`;
-            updateParams = [JSON.stringify(updated), updated.length, volunteer.id];
-
+            if (!violationError || !violationDate) return res.status(400).json({ error: 'Vui lòng nhập đủ thông tin lỗi vi phạm!' });
+            db.run(`INSERT INTO violations (volunteerId, error, date) VALUES (?, ?, ?)`, [volunteer.id, violationError.trim(), violationDate], (err) => {
+                if (err) return res.status(500).json({ error: 'Lỗi lưu vi phạm!' });
+                res.json({ message: 'Cập nhật lỗi vi phạm thành công!' });
+            });
         } else if (category === 'achievement') {
-            if (!achievementContent) {
-                return res.status(400).json({ error: 'Vui lòng nhập Nội dung thành tích!' });
-            }
-            const updated = [...volunteer.achievements, achievementContent];
-            updateSql = `UPDATE volunteers SET achievements = ? WHERE id = ?`;
-            updateParams = [JSON.stringify(updated), volunteer.id];
-
+            if (!achievementContent) return res.status(400).json({ error: 'Vui lòng nhập nội dung thành tích!' });
+            db.run(`INSERT INTO achievements (volunteerId, content) VALUES (?, ?)`, [volunteer.id, achievementContent.trim()], (err) => {
+                if (err) return res.status(500).json({ error: 'Lỗi lưu thành tích!' });
+                res.json({ message: 'Cập nhật thành tích thành công!' });
+            });
         } else if (category === 'note') {
-            if (!noteContent) {
-                return res.status(400).json({ error: 'Vui lòng nhập Nội dung ghi chú!' });
-            }
-            const updated = [...volunteer.generalNotes, noteContent];
-            updateSql = `UPDATE volunteers SET generalNotes = ? WHERE id = ?`;
-            updateParams = [JSON.stringify(updated), volunteer.id];
+            if (!noteContent) return res.status(400).json({ error: 'Vui lòng nhập nội dung ghi chú!' });
+            db.run(`INSERT INTO general_notes (volunteerId, content) VALUES (?, ?)`, [volunteer.id, noteContent.trim()], (err) => {
+                if (err) return res.status(500).json({ error: 'Lỗi lưu ghi chú!' });
+                res.json({ message: 'Cập nhật ghi chú thành công!' });
+            });
+        } else {
+            res.status(400).json({ error: 'Loại ghi nhận không hợp lệ!' });
+        }
+    });
+});
+
+// Form 4: Tra cứu thông tin cá nhân
+app.post('/api/volunteers/my-profile', (req, res) => {
+    const { fullName, studentId } = req.body;
+    if (!fullName || !studentId) {
+        return res.status(400).json({ error: 'Vui lòng nhập Họ tên và MSSV!' });
+    }
+
+    findVolunteer(fullName, studentId, (err, volunteer) => {
+        if (err || !volunteer) {
+            return res.status(404).json({ error: 'Không tìm thấy dữ liệu cá nhân!' });
         }
 
-        db.run(updateSql, updateParams, (err) => {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ message: 'Cập nhật thông tin bổ sung thành công!' });
+        const vId = volunteer.id;
+        db.all(`SELECT jobContent, date FROM activities WHERE volunteerId = ?`, [vId], (err, activities) => {
+            db.all(`SELECT campaignName FROM campaigns WHERE volunteerId = ?`, [vId], (err, campaigns) => {
+                db.all(`SELECT error, date FROM violations WHERE volunteerId = ?`, [vId], (err, violations) => {
+                    db.all(`SELECT content FROM achievements WHERE volunteerId = ?`, [vId], (err, achievements) => {
+                        db.all(`SELECT content FROM general_notes WHERE volunteerId = ?`, [vId], (err, notes) => {
+                            res.json({
+                                fullName: volunteer.fullName,
+                                studentId: volunteer.studentId,
+                                isApproved: volunteer.isApproved,
+                                activityCount: activities ? activities.length : 0,
+                                activities: activities || [],
+                                campaignCount: campaigns ? campaigns.length : 0,
+                                campaigns: (campaigns || []).map(c => c.campaignName),
+                                violationCount: violations ? violations.length : 0,
+                                violations: violations || [],
+                                achievements: (achievements || []).map(a => a.content),
+                                generalNotes: (notes || []).map(n => n.content)
+                            });
+                        });
+                    });
+                });
+            });
         });
     });
 });
 
-// 8. Xóa dữ liệu (Cần Admin)
-app.delete('/api/volunteers/:id', verifyAdmin, (req, res) => {
-    db.run(`DELETE FROM volunteers WHERE id = ?`, [req.params.id], function (err) {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: 'Đã xóa hồ sơ TNV!' });
+// Form 5: Bảng tổng kết đầy đủ (Cần Admin)
+app.get('/api/volunteers', verifyAdmin, (req, res) => {
+    const query = `
+        SELECT 
+            v.id, v.fullName, v.studentId, v.isApproved, v.createdAt,
+            (SELECT COUNT(*) FROM activities WHERE volunteerId = v.id) as activityCount,
+            (SELECT COUNT(*) FROM campaigns WHERE volunteerId = v.id) as campaignCount,
+            (SELECT COUNT(*) FROM violations WHERE volunteerId = v.id) as violationCount,
+            (SELECT GROUP_CONCAT(content, '||') FROM achievements WHERE volunteerId = v.id) as achievementsStr,
+            (SELECT GROUP_CONCAT(content, '||') FROM general_notes WHERE volunteerId = v.id) as notesStr
+        FROM volunteers v
+        ORDER BY v.id DESC
+    `;
+
+    db.all(query, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Lỗi lấy dữ liệu bảng tổng kết!' });
+        
+        const formatted = rows.map(r => ({
+            ...r,
+            achievements: r.achievementsStr ? r.achievementsStr.split('||') : [],
+            generalNotes: r.notesStr ? r.notesStr.split('||') : []
+        }));
+
+        res.json(formatted);
     });
 });
 
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// Admin Duyệt TNV
+app.post('/api/volunteers/:id/approve', verifyAdmin, (req, res) => {
+    db.run(`UPDATE volunteers SET isApproved = 1 WHERE id = ?`, [req.params.id], function(err) {
+        if (err) return res.status(500).json({ error: 'Không thể duyệt!' });
+        res.json({ message: 'Đã duyệt Tình nguyện viên thành công!' });
+    });
 });
 
+// Admin Xóa TNV
+app.delete('/api/volunteers/:id', verifyAdmin, (req, res) => {
+    db.run(`DELETE FROM volunteers WHERE id = ?`, [req.params.id], function(err) {
+        if (err) return res.status(500).json({ error: 'Không thể xóa!' });
+        res.json({ message: 'Đã xóa Tình nguyện viên khỏi hệ thống!' });
+    });
+});
+
+// Chạy Server
 app.listen(PORT, () => {
-    console.log(`Server đang chạy trên port: ${PORT}`);
+    console.log(`Server running at http://localhost:${PORT}`);
 });
