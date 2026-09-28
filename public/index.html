@@ -379,7 +379,7 @@
         // Form 3
         document.getElementById('f3-form').onsubmit = async (e) => {
             e.preventDefault();
-            const adminPass = document.getElementById('f3-adminPass').value;
+            const adminPass = document.getElementById('f3-adminPass').value.trim();
             const category = document.getElementById('f3-category').value;
 
             const payload = {
@@ -447,7 +447,7 @@
 
         // Mở khóa Bảng tổng kết
         async function unlockSummaryTable() {
-            const pass = document.getElementById('summary-admin-pass').value;
+            const pass = document.getElementById('summary-admin-pass').value.trim();
             if (!pass) return alert('Vui lòng nhập mật khẩu!');
 
             const res = await fetch('/api/volunteers', {
