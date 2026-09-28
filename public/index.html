@@ -3,237 +3,345 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản lý Tình nguyện viên - Kì 2026.1</title>
+    <title>Hệ Thống Quản Lý Tình Nguyện Viên</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        table th, table td {
-            border: 1px solid #cbd5e1;
-            text-align: center;
-        }
-    </style>
 </head>
-<body class="bg-slate-100 text-slate-800 font-sans min-h-screen">
+<body class="bg-gray-100 text-gray-800 font-sans min-h-screen pb-10">
 
-    <header class="bg-blue-700 text-white shadow-lg">
-        <div class="container mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center">
-            <h1 class="text-xl font-bold uppercase tracking-wide">Hệ thống Quản lý Tình nguyện viên</h1>
-            <span class="text-sm bg-blue-800 px-3 py-1 rounded-full mt-2 md:mt-0 font-medium">Kì học: 2026.1</span>
+    <!-- Header -->
+    <header class="bg-blue-700 text-white p-4 shadow-md">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold uppercase">Hệ Thống Quản Lý Tình Nguyện Viên</h1>
+            <span class="bg-blue-800 px-3 py-1 rounded-full text-xs font-semibold">Kỳ 2026.1</span>
         </div>
     </header>
 
-    <div class="container mx-auto px-4 py-6">
-        <!-- Tab Navigation -->
+    <div class="max-w-6xl mx-auto mt-6 px-4">
+
+        <!-- TAB NAVIGATION -->
         <div class="flex flex-wrap gap-2 border-b border-gray-300 pb-3 mb-6">
-            <button onclick="switchTab('dashboard')" id="btn-dashboard" class="tab-btn px-4 py-2 font-semibold rounded-lg bg-blue-600 text-white shadow">
-                📊 Bảng Tổng Kết
-            </button>
-            <button onclick="switchTab('add-tnv')" id="btn-add-tnv" class="tab-btn px-4 py-2 font-semibold rounded-lg bg-white text-gray-700 hover:bg-slate-200 shadow-sm">
-                ➕ Thêm TNV Ban Đầu (Admin)
-            </button>
-            <button onclick="switchTab('form1')" id="btn-form1" class="tab-btn px-4 py-2 font-semibold rounded-lg bg-white text-gray-700 hover:bg-slate-200 shadow-sm">
-                📝 1. Ghi Nhận Buổi TN (Công khai)
-            </button>
-            <button onclick="switchTab('form2')" id="btn-form2" class="tab-btn px-4 py-2 font-semibold rounded-lg bg-white text-gray-700 hover:bg-slate-200 shadow-sm">
-                🔒 2. Chiến Dịch Lớn (Cần mật khẩu)
-            </button>
-            <button onclick="switchTab('form3')" id="btn-form3" class="tab-btn px-4 py-2 font-semibold rounded-lg bg-white text-gray-700 hover:bg-slate-200 shadow-sm">
-                🔒 3. Nhập Thông Tin Bổ Sung (Cần mật khẩu)
-            </button>
+            <button onclick="switchTab('tab-form1')" id="btn-form1" class="tab-btn px-4 py-2 bg-blue-600 text-white font-medium rounded-lg shadow">Form 1: Buổi Tình Nguyện</button>
+            <button onclick="switchTab('tab-form2')" id="btn-form2" class="tab-btn px-4 py-2 bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300">Form 2: Chiến Dịch Lớn</button>
+            <button onclick="switchTab('tab-lookup')" id="btn-lookup" class="tab-btn px-4 py-2 bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300">Tra Cứu Cá Nhân</button>
+            <button onclick="switchTab('tab-admin')" id="btn-admin" class="tab-btn px-4 py-2 bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300">🔒 Bảng Tổng Kết (Admin)</button>
         </div>
 
-        <div id="toast" class="hidden mb-4 p-4 rounded-lg font-medium text-white shadow-md transition-all"></div>
-
-        <!-- SECTION 1: BẢNG TỔNG KẾT -->
-        <section id="sec-dashboard" class="tab-content">
-            <div class="bg-white p-4 rounded-xl shadow-md border border-gray-200 mb-4 flex justify-between items-center">
-                <h2 class="text-xl font-bold text-blue-900 uppercase">Danh sách Tổng kết TNV 2026.1</h2>
-                <span class="text-xs text-gray-500 font-medium">* Bấm nút ⚙️ Quản lý ở mỗi dòng để xem/xóa chi tiết từng mục</span>
-            </div>
-
-            <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200 overflow-x-auto">
-                <table class="w-full text-xs md:text-sm border-collapse">
-                    <thead class="bg-slate-800 text-white font-semibold">
-                        <tr>
-                            <th rowspan="2" class="p-2 w-12">STT</th>
-                            <th rowspan="2" class="p-2 min-w-[140px]">Họ và tên</th>
-                            <th rowspan="2" class="p-2 min-w-[100px]">MSSV</th>
-                            <th colspan="3" class="p-2 bg-blue-900">Hoạt động tình nguyện</th>
-                            <th colspan="3" class="p-2 bg-red-900">Vi phạm kỷ luật</th>
-                            <th colspan="3" class="p-2 bg-emerald-900">Hoạt động tình nguyện xa, chiến dịch lớn</th>
-                            <th rowspan="2" class="p-2 min-w-[150px]">Ghi chú chung</th>
-                            <th rowspan="2" class="p-2 min-w-[120px] bg-slate-900">Thao tác Admin</th>
-                        </tr>
-                        <tr class="text-xs">
-                            <th class="p-2 min-w-[150px] bg-blue-800">Công việc (Nội dung hỗ trợ)</th>
-                            <th class="p-2 min-w-[110px] bg-blue-800">Ngày, tháng, năm</th>
-                            <th class="p-2 min-w-[80px] bg-blue-800">Tổng số buổi</th>
-
-                            <th class="p-2 min-w-[140px] bg-red-800">Lỗi vi phạm</th>
-                            <th class="p-2 min-w-[110px] bg-red-800">Ngày, tháng, năm</th>
-                            <th class="p-2 min-w-[80px] bg-red-800">Tổng số lỗi</th>
-
-                            <th class="p-2 min-w-[140px] bg-emerald-800">Tên chiến dịch</th>
-                            <th class="p-2 min-w-[140px] bg-emerald-800">Thành tích nổi bật</th>
-                            <th class="p-2 min-w-[80px] bg-emerald-800">Tổng chiến dịch</th>
-                        </tr>
-                    </thead>
-                    <tbody id="volunteer-table-body" class="divide-y divide-gray-200">
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
-        <!-- SECTION: THÊM TNV BAN ĐẦU -->
-        <section id="sec-add-tnv" class="tab-content hidden max-w-xl mx-auto">
-            <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
-                <h3 class="text-xl font-bold text-blue-800 mb-4 border-b pb-2">Khởi Tạo Tình Nguyện Viên Mới (0 buổi)</h3>
-                <form id="form-create-tnv" onsubmit="handleCreateTNV(event)" class="space-y-4">
-                    <div>
-                        <label class="block font-medium text-sm mb-1">Họ và tên TNV <span class="text-red-500">*</span></label>
-                        <input type="text" id="add-fullName" required class="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Nguyễn Văn A">
-                    </div>
-                    <div>
-                        <label class="block font-medium text-sm mb-1">MSSV <span class="text-red-500">*</span></label>
-                        <input type="text" id="add-studentId" required class="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="20260001">
-                    </div>
-                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg shadow">
-                        Thêm Vào Danh Sách (Yêu cầu mật khẩu)
-                    </button>
-                </form>
-            </div>
-        </section>
-
-        <!-- SECTION: FORM 1 (CÔNG KHAI) -->
-        <section id="sec-form1" class="tab-content hidden max-w-xl mx-auto">
-            <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
-                <div class="flex justify-between items-center mb-4 border-b pb-2">
-                    <h3 class="text-xl font-bold text-blue-800">Form 1: Ghi Nhận Buổi Tình Nguyện Thường</h3>
-                    <button onclick="copyShareLink(1)" class="text-xs bg-slate-200 hover:bg-slate-300 px-2 py-1 rounded text-gray-700">🔗 Link Form 1</button>
+        <!-- FORM 1: ĐIỀN BUỔI TÌNH NGUYỆN -->
+        <div id="tab-form1" class="tab-content bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-lg font-bold mb-4 text-blue-700">1. Ghi Nhận Buổi Tình Nguyện (Công Khai)</h2>
+            <form id="form-activity" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium">Họ và Tên:</label>
+                    <input type="text" id="f1-name" required class="w-full p-2 border rounded mt-1">
                 </div>
-                <form id="form-activity" onsubmit="handleForm1Submit(event)" class="space-y-4">
-                    <div>
-                        <label class="block font-medium text-sm mb-1">Họ và tên TNV <span class="text-red-500">*</span></label>
-                        <input type="text" id="f1-fullName" required class="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Nguyễn Văn A">
-                    </div>
-                    <div>
-                        <label class="block font-medium text-sm mb-1">MSSV <span class="text-red-500">*</span></label>
-                        <input type="text" id="f1-studentId" required class="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="20260001">
-                    </div>
-                    <div>
-                        <label class="block font-medium text-sm mb-1">Nội dung công việc hỗ trợ <span class="text-red-500">*</span></label>
-                        <input type="text" id="f1-jobContent" required class="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Dọn dẹp khuôn viên, hỗ trợ tiếp sức...">
-                    </div>
-                    <div>
-                        <label class="block font-medium text-sm mb-1">Ngày / tháng / năm <span class="text-red-500">*</span></label>
-                        <input type="date" id="f1-date" required class="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none">
-                    </div>
-                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg shadow">Gửi Thông Tin</button>
-                </form>
-            </div>
-        </section>
-
-        <!-- SECTION: FORM 2 (CẦN MẬT KHẨU) -->
-        <section id="sec-form2" class="tab-content hidden max-w-xl mx-auto">
-            <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
-                <div class="flex justify-between items-center mb-4 border-b pb-2">
-                    <h3 class="text-xl font-bold text-emerald-800">Form 2: Ghi Nhận Chiến Dịch / Tình Nguyện Xa 🔒</h3>
-                    <button onclick="copyShareLink(2)" class="text-xs bg-slate-200 hover:bg-slate-300 px-2 py-1 rounded text-gray-700">🔗 Link Form 2</button>
+                <div>
+                    <label class="block text-sm font-medium">Mã Số Sinh Viên (MSSV):</label>
+                    <input type="text" id="f1-mssv" required class="w-full p-2 border rounded mt-1">
                 </div>
-                <form id="form-campaign" onsubmit="handleForm2Submit(event)" class="space-y-4">
-                    <div>
-                        <label class="block font-medium text-sm mb-1">Họ và tên TNV <span class="text-red-500">*</span></label>
-                        <input type="text" id="f2-fullName" required class="w-full border rounded p-2 focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Trần Thị B">
-                    </div>
-                    <div>
-                        <label class="block font-medium text-sm mb-1">MSSV <span class="text-red-500">*</span></label>
-                        <input type="text" id="f2-studentId" required class="w-full border rounded p-2 focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="20260002">
-                    </div>
-                    <div>
-                        <label class="block font-medium text-sm mb-1">Tên chiến dịch <span class="text-red-500">*</span></label>
-                        <input type="text" id="f2-campaignName" required class="w-full border rounded p-2 focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Mùa Hè Xanh 2026, Chiến dịch Mùa đông ấm...">
-                    </div>
-                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg shadow">Gửi Thông Tin (Yêu cầu mật khẩu)</button>
-                </form>
-            </div>
-        </section>
-
-        <!-- SECTION: FORM 3 (CẦN MẬT KHẨU) -->
-        <section id="sec-form3" class="tab-content hidden max-w-xl mx-auto">
-            <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
-                <div class="flex justify-between items-center mb-4 border-b pb-2">
-                    <h3 class="text-xl font-bold text-purple-800">Form 3: Nhập Thông Tin Bổ Sung & Ghi Chú 🔒</h3>
-                    <button onclick="copyShareLink(3)" class="text-xs bg-slate-200 hover:bg-slate-300 px-2 py-1 rounded text-gray-700">🔗 Link Form 3</button>
+                <div>
+                    <label class="block text-sm font-medium">Tên Nội Dung Hoạt Động (VD: Trực bàn buổi 1):</label>
+                    <input type="text" id="f1-job" required class="w-full p-2 border rounded mt-1">
                 </div>
-                <form id="form-additional" onsubmit="handleForm3Submit(event)" class="space-y-4">
-                    <div>
-                        <label class="block font-medium text-sm mb-1">Họ và tên TNV <span class="text-red-500">*</span></label>
-                        <input type="text" id="f3-fullName" required onblur="checkDuplicateName()" class="w-full border rounded p-2 focus:ring-2 focus:ring-purple-500 outline-none" placeholder="Nhập tên để kiểm tra...">
-                    </div>
+                <div>
+                    <label class="block text-sm font-medium">Ngày Tham Gia:</label>
+                    <input type="date" id="f1-date" required class="w-full p-2 border rounded mt-1">
+                </div>
+                <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded font-semibold hover:bg-blue-700">Gửi Ghi Nhận</button>
+            </form>
+        </div>
 
-                    <div id="f3-studentId-container" class="hidden p-3 bg-amber-50 border border-amber-300 rounded-md">
-                        <label class="block font-medium text-sm text-amber-800 mb-1">
-                            ⚠️ Phát hiện trùng tên trong hệ thống! Vui lòng nhập MSSV để định danh: <span class="text-red-500">*</span>
-                        </label>
-                        <input type="text" id="f3-studentId" class="w-full border rounded p-2 focus:ring-2 focus:ring-amber-500 outline-none" placeholder="Nhập MSSV...">
-                    </div>
+        <!-- FORM 2: CHIẾN DỊCH LỚN (KHÔNG CẦN MAT KHÂU ADMIN) -->
+        <div id="tab-form2" class="tab-content hidden bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-lg font-bold mb-4 text-green-700">2. Ghi Nhận Chiến Dịch Lớn (Công Khai)</h2>
+            <form id="form-campaign" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium">Họ và Tên:</label>
+                    <input type="text" id="f2-name" required class="w-full p-2 border rounded mt-1">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium">Mã Số Sinh Viên (MSSV):</label>
+                    <input type="text" id="f2-mssv" required class="w-full p-2 border rounded mt-1">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium">Tên Chiến Dịch Lớn (VD: Mùa Hè Xanh 2026):</label>
+                    <input type="text" id="f2-campaign" required class="w-full p-2 border rounded mt-1">
+                </div>
+                <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded font-semibold hover:bg-green-700">Gửi Chiến Dịch</button>
+            </form>
+        </div>
 
+        <!-- FORM TRA CỨU CÁ NHÂN (YÊU CẦU HỌ TÊN + MSSV) -->
+        <div id="tab-lookup" class="tab-content hidden bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-lg font-bold mb-4 text-purple-700">3. Tra Cứu Thành Tích Cá Nhân</h2>
+            <form id="form-lookup" class="space-y-4 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="block font-medium text-sm mb-1">Chọn mục cần nạp dữ liệu <span class="text-red-500">*</span></label>
-                        <select id="f3-category" onchange="toggleForm3Fields()" required class="w-full border rounded p-2 focus:ring-2 focus:ring-purple-500 outline-none">
-                            <option value="">-- Chọn mục --</option>
-                            <option value="violation">1. Vi phạm kỷ luật</option>
-                            <option value="achievement">2. Thành tích nổi bật (Tình nguyện xa)</option>
-                            <option value="note">3. Ghi chú chung</option>
+                        <label class="block text-sm font-medium">Họ và Tên:</label>
+                        <input type="text" id="lookup-name" placeholder="Nguyễn Văn A" required class="w-full p-2 border rounded mt-1">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium">Mã Số Sinh Viên (MSSV):</label>
+                        <input type="text" id="lookup-mssv" placeholder="20220001" required class="w-full p-2 border rounded mt-1">
+                    </div>
+                </div>
+                <button type="submit" class="bg-purple-600 text-white px-6 py-2 rounded font-semibold hover:bg-purple-700">Tra Cứu Hồ Sơ</button>
+            </form>
+
+            <div id="profile-result" class="hidden border-t pt-4">
+                <!-- Thông tin cá nhân sẽ hiện ở đây -->
+            </div>
+        </div>
+
+        <!-- TAB ADMIN: BẢNG TỔNG KẾT (CẦN MẬT KHẨU ADMIN) -->
+        <div id="tab-admin" class="tab-content hidden bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-lg font-bold mb-4 text-red-700">🔒 Bảng Tổng Kết Quản Trị Viên</h2>
+
+            <!-- KHÓA DỰ LIỆU KHI CHƯA ĐĂNG NHẬP ADMIN -->
+            <div id="admin-auth-box" class="space-y-4 max-w-md mx-auto my-8 p-6 bg-red-50 border border-red-200 rounded-lg text-center">
+                <p class="font-medium text-red-800">Vui lòng nhập Mật Khẩu Quản Trị để xem Bảng tổng kết:</p>
+                <input type="password" id="admin-pass-input" placeholder="Nhập mật khẩu..." class="w-full p-2 border rounded text-center">
+                <button onclick="unlockAdminTable()" class="bg-red-600 text-white px-6 py-2 rounded font-semibold hover:bg-red-700 w-full">Xác Nhận Mở Khóa</button>
+            </div>
+
+            <!-- BẢNG TỔNG KẾT & BỘ LỌC DỮ LIỆU EXCEL -->
+            <div id="admin-table-container" class="hidden space-y-4">
+                
+                <!-- BỘ LỌC KIỂU EXCEL -->
+                <div class="bg-gray-50 p-4 border rounded-lg grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 uppercase">Tìm Tên / MSSV:</label>
+                        <input type="text" id="filter-search" oninput="applyFilters()" placeholder="Nhập tên hoặc MSSV..." class="w-full p-2 border rounded text-sm mt-1">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 uppercase">Lọc Buổi TN (Số buổi):</label>
+                        <select id="filter-activities" onchange="applyFilters()" class="w-full p-2 border rounded text-sm mt-1">
+                            <option value="all">Tất cả</option>
+                            <option value="gt0">> 0 buổi</option>
+                            <option value="gte3">>= 3 buổi</option>
+                            <option value="eq0">= 0 buổi</option>
                         </select>
                     </div>
-
-                    <div id="field-violation" class="hidden space-y-3 p-3 bg-red-50 rounded border border-red-200">
-                        <div>
-                            <label class="block font-medium text-sm mb-1">Lỗi vi phạm <span class="text-red-500">*</span></label>
-                            <input type="text" id="f3-violationError" class="w-full border rounded p-2 outline-none" placeholder="Đi muộn, không đeo thẻ...">
-                        </div>
-                        <div>
-                            <label class="block font-medium text-sm mb-1">Ngày vi phạm <span class="text-red-500">*</span></label>
-                            <input type="date" id="f3-violationDate" class="w-full border rounded p-2 outline-none">
-                        </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 uppercase">Lọc Chiến dịch:</label>
+                        <select id="filter-campaigns" onchange="applyFilters()" class="w-full p-2 border rounded text-sm mt-1">
+                            <option value="all">Tất cả</option>
+                            <option value="gt0">Có chiến dịch</option>
+                            <option value="eq0">Chưa có chiến dịch</option>
+                        </select>
                     </div>
-
-                    <div id="field-achievement" class="hidden p-3 bg-emerald-50 rounded border border-emerald-200">
-                        <label class="block font-medium text-sm mb-1">Nội dung thành tích nổi bật <span class="text-red-500">*</span></label>
-                        <textarea id="f3-achievementContent" rows="2" class="w-full border rounded p-2 outline-none" placeholder="Bằng khen Chiến sĩ giỏi..."></textarea>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 uppercase">Lọc Vi phạm:</label>
+                        <select id="filter-violations" onchange="applyFilters()" class="w-full p-2 border rounded text-sm mt-1">
+                            <option value="all">Tất cả</option>
+                            <option value="gt0">Có vi phạm</option>
+                            <option value="eq0">Không vi phạm</option>
+                        </select>
                     </div>
+                </div>
 
-                    <div id="field-note" class="hidden p-3 bg-slate-50 rounded border border-slate-200">
-                        <label class="block font-medium text-sm mb-1">Nội dung ghi chú <span class="text-red-500">*</span></label>
-                        <textarea id="f3-noteContent" rows="2" class="w-full border rounded p-2 outline-none" placeholder="Nhập nội dung ghi chú..."></textarea>
-                    </div>
+                <!-- BẢNG DỮ LIỆU -->
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse border border-gray-300 text-sm">
+                        <thead>
+                            <tr class="bg-gray-200 text-gray-700">
+                                <th class="border p-2">STT</th>
+                                <th class="border p-2">Họ và Tên</th>
+                                <th class="border p-2">MSSV</th>
+                                <th class="border p-2">Buổi TN</th>
+                                <th class="border p-2">Chiến Dịch Lớn</th>
+                                <th class="border p-2">Lỗi Vi Phạm</th>
+                                <th class="border p-2">Thành Tích</th>
+                                <th class="border p-2">Hành Động</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body">
+                            <!-- Dữ liệu render tại đây -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
-                    <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded-lg shadow">Lưu Thông Tin (Yêu cầu mật khẩu)</button>
-                </form>
-            </div>
-        </section>
-    </div>
-
-    <!-- MODAL POPUP: QUẢN LÝ & XÓA LẺ TỪNG MỤC -->
-    <div id="detail-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
-            <div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center">
-                <h3 id="modal-title" class="font-bold text-lg">Quản lý Chi tiết TNV</h3>
-                <button onclick="closeModal()" class="text-gray-400 hover:text-white font-bold text-xl">&times;</button>
-            </div>
-            <div id="modal-body" class="p-6 overflow-y-auto space-y-6">
-            </div>
-            <div class="bg-slate-100 px-6 py-3 border-t flex justify-between items-center">
-                <button id="btn-delete-all" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded shadow">
-                    🗑️ Xóa Toàn Bộ Dòng Dữ Liệu
-                </button>
-                <button onclick="closeModal()" class="bg-slate-500 hover:bg-slate-600 text-white text-xs font-bold px-4 py-2 rounded shadow">
-                    Đóng
-                </button>
-            </div>
         </div>
+
     </div>
 
-    <script src="app.js"></script>
+    <script>
+        let adminPassword = '';
+        let allVolunteers = [];
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white');
+                btn.classList.add('bg-gray-200', 'text-gray-700');
+            });
+
+            document.getElementById(tabId).classList.remove('hidden');
+            const activeBtn = document.getElementById('btn-' + tabId.replace('tab-', ''));
+            activeBtn.classList.remove('bg-gray-200', 'text-gray-700');
+            activeBtn.classList.add('bg-blue-600', 'text-white');
+        }
+
+        // Form 1
+        document.getElementById('form-activity').onsubmit = async (e) => {
+            e.preventDefault();
+            const res = await fetch('/api/volunteers/activity', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fullName: document.getElementById('f1-name').value,
+                    studentId: document.getElementById('f1-mssv').value,
+                    jobContent: document.getElementById('f1-job').value,
+                    date: document.getElementById('f1-date').value
+                })
+            });
+            const data = await res.json();
+            alert(data.message || data.error);
+            if (res.ok) e.target.reset();
+        };
+
+        // Form 2
+        document.getElementById('form-campaign').onsubmit = async (e) => {
+            e.preventDefault();
+            const res = await fetch('/api/volunteers/campaign', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fullName: document.getElementById('f2-name').value,
+                    studentId: document.getElementById('f2-mssv').value,
+                    campaignName: document.getElementById('f2-campaign').value
+                })
+            });
+            const data = await res.json();
+            alert(data.message || data.error);
+            if (res.ok) e.target.reset();
+        };
+
+        // Tra cứu cá nhân
+        document.getElementById('form-lookup').onsubmit = async (e) => {
+            e.preventDefault();
+            const fullName = document.getElementById('lookup-name').value;
+            const studentId = document.getElementById('lookup-mssv').value;
+
+            const res = await fetch('/api/volunteers/my-profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fullName, studentId })
+            });
+
+            const data = await res.json();
+            const resultDiv = document.getElementById('profile-result');
+
+            if (!res.ok) {
+                alert(data.error);
+                resultDiv.classList.add('hidden');
+                return;
+            }
+
+            resultDiv.classList.remove('hidden');
+            resultDiv.innerHTML = `
+                <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                    <h3 class="text-xl font-bold text-purple-900">${data.fullName} (${data.studentId})</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                        <div class="bg-white p-3 rounded shadow-sm">
+                            <h4 class="font-bold text-blue-600 mb-2">Buổi Tình Nguyện (${data.activityCount}):</h4>
+                            <ul class="list-disc pl-5 text-sm">${data.activities.map(a => `<li><b>${a.jobContent}</b> (${a.date})</li>`).join('') || 'Chưa có'}</ul>
+                        </div>
+                        <div class="bg-white p-3 rounded shadow-sm">
+                            <h4 class="font-bold text-green-600 mb-2">Chiến Dịch Lớn (${data.campaignCount}):</h4>
+                            <ul class="list-disc pl-5 text-sm">${data.campaigns.map(c => `<li>${c}</li>`).join('') || 'Chưa có'}</ul>
+                        </div>
+                        <div class="bg-white p-3 rounded shadow-sm">
+                            <h4 class="font-bold text-red-600 mb-2">Vi Phạm (${data.violationCount}):</h4>
+                            <ul class="list-disc pl-5 text-sm">${data.violations.map(v => `<li>${v.error} (${v.date})</li>`).join('') || 'Không có'}</ul>
+                        </div>
+                        <div class="bg-white p-3 rounded shadow-sm">
+                            <h4 class="font-bold text-amber-600 mb-2">Thành Tích & Khen Thưởng:</h4>
+                            <ul class="list-disc pl-5 text-sm">${data.achievements.map(a => `<li>${a}</li>`).join('') || 'Chưa có'}</ul>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        // Unlock Admin Table
+        async function unlockAdminTable() {
+            const pass = document.getElementById('admin-pass-input').value;
+            if (!pass) return alert('Vui lòng nhập mật khẩu!');
+
+            const res = await fetch('/api/volunteers', {
+                headers: { 'x-admin-password': pass }
+            });
+
+            if (!res.ok) {
+                alert('Mật khẩu quản trị không chính xác!');
+                return;
+            }
+
+            adminPassword = pass;
+            allVolunteers = await res.json();
+
+            document.getElementById('admin-auth-box').classList.add('hidden');
+            document.getElementById('admin-table-container').classList.remove('hidden');
+
+            renderTable(allVolunteers);
+        }
+
+        // Lọc kiểu Excel
+        function applyFilters() {
+            const search = document.getElementById('filter-search').value.toLowerCase();
+            const actFilter = document.getElementById('filter-activities').value;
+            const campFilter = document.getElementById('filter-campaigns').value;
+            const violFilter = document.getElementById('filter-violations').value;
+
+            const filtered = allVolunteers.filter(v => {
+                const matchSearch = v.fullName.toLowerCase().includes(search) || v.studentId.toLowerCase().includes(search);
+                
+                let matchAct = true;
+                if (actFilter === 'gt0') matchAct = v.activityCount > 0;
+                else if (actFilter === 'gte3') matchAct = v.activityCount >= 3;
+                else if (actFilter === 'eq0') matchAct = v.activityCount === 0;
+
+                let matchCamp = true;
+                if (campFilter === 'gt0') matchCamp = v.campaignCount > 0;
+                else if (campFilter === 'eq0') matchCamp = v.campaignCount === 0;
+
+                let matchViol = true;
+                if (violFilter === 'gt0') matchViol = v.violationCount > 0;
+                else if (violFilter === 'eq0') matchViol = v.violationCount === 0;
+
+                return matchSearch && matchAct && matchCamp && matchViol;
+            });
+
+            renderTable(filtered);
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = data.map((v, i) => `
+                <tr class="hover:bg-gray-50 border-b">
+                    <td class="p-2 text-center">${i + 1}</td>
+                    <td class="p-2 font-semibold">${v.fullName}</td>
+                    <td class="p-2 text-center">${v.studentId}</td>
+                    <td class="p-2 text-center font-bold text-blue-600">${v.activityCount}</td>
+                    <td class="p-2 text-center font-bold text-green-600">${v.campaignCount}</td>
+                    <td class="p-2 text-center font-bold text-red-600">${v.violationCount}</td>
+                    <td class="p-2 text-xs">${v.achievements.join(', ') || '-'}</td>
+                    <td class="p-2 text-center">
+                        <button onclick="deleteVolunteer(${v.id})" class="text-red-600 hover:underline font-semibold text-xs">Xóa</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function deleteVolunteer(id) {
+            if (!confirm('Bạn có chắc chắn muốn xóa dữ liệu TNV này không?')) return;
+            const res = await fetch(`/api/volunteers/${id}`, {
+                method: 'DELETE',
+                headers: { 'x-admin-password': adminPassword }
+            });
+            if (res.ok) unlockAdminTable();
+        }
+    </script>
 </body>
 </html>
