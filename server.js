@@ -18,9 +18,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Middleware kiểm tra mật khẩu Admin
+// Middleware kiểm tra mật khẩu Admin
 function verifyAdmin(req, res, next) {
     const adminPassword = req.headers['x-admin-password'];
-    if (adminPassword !== ADMIN_PASSWORD) {
+    if (!adminPassword || adminPassword.trim().toUpperCase() !== ADMIN_PASSWORD.toUpperCase()) {
         return res.status(401).json({ error: 'Mật khẩu quản trị không chính xác!' });
     }
     next();
