@@ -33,9 +33,12 @@
             <button onclick="showTab('summary')" id="btn-summary" class="tab-btn px-4 py-2 bg-white text-slate-700 rounded font-medium border hover:bg-slate-50">🔒 Bảng tổng kết</button>
         </div>
 
-        <!-- TAB 0: KHỞI TẠO TÌNH NGUYỆN VIÊN MỚI (KHÔNG CẦN MAT KHÂU) -->
+        <!-- TAB 0: KHỞI TẠO TÌNH NGUYỆN VIÊN MỚI -->
         <div id="tab-init" class="tab-content bg-white p-6 rounded shadow max-w-2xl mx-auto">
-            <h2 class="text-lg font-bold text-blue-800 mb-2 border-b pb-2">Khởi tạo Tình nguyện viên mới (Không cần mật khẩu)</h2>
+            <div class="flex justify-between items-center border-b pb-2 mb-2">
+                <h2 class="text-lg font-bold text-blue-800">Khởi tạo Tình nguyện viên mới</h2>
+                <button onclick="copyFormLink('init')" class="text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 px-3 py-1 rounded font-semibold flex items-center gap-1">📋 Sao chép link Form này</button>
+            </div>
             <p class="text-xs text-slate-500 mb-4">* Hồ sơ sau khi tạo sẽ có <b>0 buổi</b> và cần Admin duyệt. Trong vòng <b>24 giờ</b> nếu không được duyệt, hồ sơ sẽ tự động bị xóa.</p>
             <form id="init-form" class="space-y-4">
                 <div>
@@ -52,7 +55,10 @@
 
         <!-- TAB 1: FORM ĐỘI VIÊN ĐIỀN BUỔI TN -->
         <div id="tab-form1" class="tab-content hidden bg-white p-6 rounded shadow max-w-2xl mx-auto">
-            <h2 class="text-lg font-bold text-blue-800 mb-4 border-b pb-2">Form 1: Ghi nhận buổi tình nguyện</h2>
+            <div class="flex justify-between items-center border-b pb-2 mb-4">
+                <h2 class="text-lg font-bold text-blue-800">Form 1: Ghi nhận buổi tình nguyện</h2>
+                <button onclick="copyFormLink('form1')" class="text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 px-3 py-1 rounded font-semibold flex items-center gap-1">📋 Sao chép link Form này</button>
+            </div>
             <form id="f1-form" class="space-y-4">
                 <div>
                     <label class="block text-sm font-semibold mb-1">Họ và Tên (*)</label>
@@ -76,7 +82,10 @@
 
         <!-- TAB 2: FORM ĐIỀN CHIẾN DỊCH LỚN -->
         <div id="tab-form2" class="tab-content hidden bg-white p-6 rounded shadow max-w-2xl mx-auto">
-            <h2 class="text-lg font-bold text-emerald-800 mb-4 border-b pb-2">Form 2: Ghi nhận chiến dịch lớn</h2>
+            <div class="flex justify-between items-center border-b pb-2 mb-4">
+                <h2 class="text-lg font-bold text-emerald-800">Form 2: Ghi nhận chiến dịch lớn</h2>
+                <button onclick="copyFormLink('form2')" class="text-xs bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-3 py-1 rounded font-semibold flex items-center gap-1">📋 Sao chép link Form này</button>
+            </div>
             <form id="f2-form" class="space-y-4">
                 <div>
                     <label class="block text-sm font-semibold mb-1">Họ và Tên (*)</label>
@@ -96,7 +105,10 @@
 
         <!-- TAB 3: FORM GHI CHÚ BỔ SUNG (CẦN ADMIN) -->
         <div id="tab-form3" class="tab-content hidden bg-white p-6 rounded shadow max-w-2xl mx-auto">
-            <h2 class="text-lg font-bold text-amber-800 mb-4 border-b pb-2">Form 3: Ghi nhận Vi phạm / Thành tích / Ghi chú (Cần Admin)</h2>
+            <div class="flex justify-between items-center border-b pb-2 mb-4">
+                <h2 class="text-lg font-bold text-amber-800">Form 3: Ghi nhận Vi phạm / Thành tích / Ghi chú (Cần Admin)</h2>
+                <button onclick="copyFormLink('form3')" class="text-xs bg-amber-100 text-amber-700 hover:bg-amber-200 px-3 py-1 rounded font-semibold flex items-center gap-1">📋 Sao chép link Form này</button>
+            </div>
             <form id="f3-form" class="space-y-4">
                 <div>
                     <label class="block text-sm font-semibold mb-1">Họ và Tên TNV (*)</label>
@@ -147,7 +159,10 @@
 
         <!-- TAB 4: TRA CỨU CÁ NHÂN -->
         <div id="tab-lookup" class="tab-content hidden bg-white p-6 rounded shadow max-w-2xl mx-auto">
-            <h2 class="text-lg font-bold text-purple-800 mb-4 border-b pb-2">Tra cứu kết quả cá nhân</h2>
+            <div class="flex justify-between items-center border-b pb-2 mb-4">
+                <h2 class="text-lg font-bold text-purple-800">Tra cứu kết quả cá nhân</h2>
+                <button onclick="copyFormLink('lookup')" class="text-xs bg-purple-100 text-purple-700 hover:bg-purple-200 px-3 py-1 rounded font-semibold flex items-center gap-1">📋 Sao chép link Form này</button>
+            </div>
             <form id="lookup-form" class="space-y-4 mb-6">
                 <div>
                     <label class="block text-sm font-semibold mb-1">Họ và Tên (*)</label>
@@ -162,7 +177,7 @@
             <div id="lookup-result" class="hidden border-t pt-4"></div>
         </div>
 
-        <!-- TAB 5: BẢNG TỔNG KẾT & DUYỆT HỒ SƠ (CẦN ADMIN) -->
+        <!-- TAB 5: BẢNG TỔNG KẾT & DUYỆT HỒ SƠ -->
         <div id="tab-summary" class="tab-content hidden bg-white p-6 rounded shadow">
             <h2 class="text-lg font-bold text-slate-800 mb-4">Bảng tổng kết quá trình hoạt động</h2>
 
@@ -277,9 +292,31 @@
 
             document.getElementById('tab-' + tabName).classList.remove('hidden');
             const activeBtn = document.getElementById('btn-' + tabName);
-            activeBtn.classList.remove('bg-white', 'text-slate-700');
-            activeBtn.classList.add('bg-blue-700', 'text-white');
+            if (activeBtn) {
+                activeBtn.classList.remove('bg-white', 'text-slate-700');
+                activeBtn.classList.add('bg-blue-700', 'text-white');
+            }
         }
+
+        // Sao chép link chứa tham số form
+        function copyFormLink(formName) {
+            const baseUrl = window.location.origin + window.location.pathname;
+            const fullUrl = `${baseUrl}?form=${formName}`;
+            navigator.clipboard.writeText(fullUrl).then(() => {
+                alert(`Đã sao chép link Form!\n${fullUrl}`);
+            }).catch(() => {
+                alert(`Link của Form này là:\n${fullUrl}`);
+            });
+        }
+
+        // Tự động mở đúng Form dựa vào URL param khi trang web load
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const formParam = urlParams.get('form');
+            if (formParam && ['init', 'form1', 'form2', 'form3', 'lookup', 'summary'].includes(formParam)) {
+                showTab(formParam);
+            }
+        });
 
         function toggleF3Fields() {
             const cat = document.getElementById('f3-category').value;
@@ -288,7 +325,7 @@
             document.getElementById('f3-field-note').classList.toggle('hidden', cat !== 'note');
         }
 
-        // Form 0: Khởi tạo TNV mới
+        // Form 0
         document.getElementById('init-form').onsubmit = async (e) => {
             e.preventDefault();
             const res = await fetch('/api/volunteers/register', {
@@ -431,7 +468,7 @@
             renderAllTables(rawVolunteersData);
         }
 
-        // Lọc Số Buổi TN (0-10 & >=3)
+        // Lọc Số Buổi TN
         function applyExcelFilters() {
             const search = document.getElementById('fl-search').value.toLowerCase();
             const actFilter = document.getElementById('fl-activities').value;
@@ -470,7 +507,6 @@
             const pendingList = data.filter(v => v.isApproved === 0);
             const approvedList = data.filter(v => v.isApproved === 1);
 
-            // Render Bảng Chờ Duyệt
             const pendingBox = document.getElementById('pending-box');
             const pendingTbody = document.getElementById('pending-tbody');
 
