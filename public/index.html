@@ -9,6 +9,7 @@
         table th, table td {
             border: 1px solid #cbd5e1;
             text-align: center;
+            vertical-align: middle;
         }
     </style>
 </head>
@@ -33,81 +34,81 @@
             <button onclick="showTab('summary')" id="btn-summary" class="tab-btn px-4 py-2 bg-white text-slate-700 rounded font-medium border hover:bg-slate-50">🔒 Bảng tổng kết</button>
         </div>
 
-        <!-- TAB 0: KHỞI TẠO TÌNH NGUYỆN VIÊN MỚI -->
+        <!-- TAB 0 -->
         <div id="tab-init" class="tab-content bg-white p-6 rounded shadow max-w-2xl mx-auto">
             <div class="flex justify-between items-center border-b pb-2 mb-2">
                 <h2 class="text-lg font-bold text-blue-800">Khởi tạo Tình nguyện viên mới</h2>
-                <button onclick="copyFormLink('init')" class="text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 px-3 py-1 rounded font-semibold flex items-center gap-1">📋 Sao chép link Form này</button>
+                <button onclick="copyFormLink('init')" class="text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 px-3 py-1 rounded font-semibold">📋 Sao chép link Form này</button>
             </div>
-            <p class="text-xs text-slate-500 mb-4">* Hồ sơ sau khi tạo sẽ có <b>0 buổi</b> và cần Admin duyệt. Trong vòng <b>24 giờ</b> nếu không được duyệt, hồ sơ sẽ tự động bị xóa.</p>
+            <p class="text-xs text-slate-500 mb-4">* Hồ sơ sau khi tạo sẽ có 0 buổi và cần Admin duyệt. Trong vòng 24 giờ nếu không duyệt sẽ bị tự động xóa.</p>
             <form id="init-form" class="space-y-4">
                 <div>
                     <label class="block text-sm font-semibold mb-1">Họ và Tên (*)</label>
-                    <input type="text" id="init-fullName" required class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500">
+                    <input type="text" id="init-fullName" required class="w-full border p-2 rounded">
                 </div>
                 <div>
                     <label class="block text-sm font-semibold mb-1">Mã Số Sinh Viên (MSSV) (*)</label>
-                    <input type="text" id="init-studentId" required class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500">
+                    <input type="text" id="init-studentId" required class="w-full border p-2 rounded">
                 </div>
                 <button type="submit" class="bg-blue-700 text-white font-bold px-6 py-2 rounded hover:bg-blue-800 w-full">Gửi đăng ký khởi tạo</button>
             </form>
         </div>
 
-        <!-- TAB 1: FORM ĐỘI VIÊN ĐIỀN BUỔI TN -->
+        <!-- TAB 1 -->
         <div id="tab-form1" class="tab-content hidden bg-white p-6 rounded shadow max-w-2xl mx-auto">
             <div class="flex justify-between items-center border-b pb-2 mb-4">
                 <h2 class="text-lg font-bold text-blue-800">Form 1: Ghi nhận buổi tình nguyện</h2>
-                <button onclick="copyFormLink('form1')" class="text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 px-3 py-1 rounded font-semibold flex items-center gap-1">📋 Sao chép link Form này</button>
+                <button onclick="copyFormLink('form1')" class="text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 px-3 py-1 rounded font-semibold">📋 Sao chép link Form này</button>
             </div>
             <form id="f1-form" class="space-y-4">
                 <div>
                     <label class="block text-sm font-semibold mb-1">Họ và Tên (*)</label>
-                    <input type="text" id="f1-fullName" required class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500">
+                    <input type="text" id="f1-fullName" required class="w-full border p-2 rounded">
                 </div>
                 <div>
                     <label class="block text-sm font-semibold mb-1">Mã Số Sinh Viên (MSSV) (*)</label>
-                    <input type="text" id="f1-studentId" required class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500">
+                    <input type="text" id="f1-studentId" required class="w-full border p-2 rounded">
                 </div>
                 <div>
                     <label class="block text-sm font-semibold mb-1">Tên công việc / Hoạt động (*)</label>
-                    <input type="text" id="f1-jobContent" placeholder="VD: Trực bàn buổi 1" required class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500">
+                    <input type="text" id="f1-jobContent" placeholder="VD: Trực bàn buổi 1" required class="w-full border p-2 rounded">
                 </div>
                 <div>
                     <label class="block text-sm font-semibold mb-1">Ngày thực hiện (*)</label>
-                    <input type="date" id="f1-date" required class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500">
+                    <input type="date" id="f1-date" required class="w-full border p-2 rounded">
                 </div>
                 <button type="submit" class="bg-blue-700 text-white font-bold px-6 py-2 rounded hover:bg-blue-800 w-full">Gửi thông tin</button>
             </form>
         </div>
 
-        <!-- TAB 2: FORM ĐIỀN CHIẾN DỊCH LỚN -->
+        <!-- TAB 2 -->
         <div id="tab-form2" class="tab-content hidden bg-white p-6 rounded shadow max-w-2xl mx-auto">
             <div class="flex justify-between items-center border-b pb-2 mb-4">
                 <h2 class="text-lg font-bold text-emerald-800">Form 2: Ghi nhận chiến dịch lớn</h2>
-                <button onclick="copyFormLink('form2')" class="text-xs bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-3 py-1 rounded font-semibold flex items-center gap-1">📋 Sao chép link Form này</button>
+                <button onclick="copyFormLink('form2')" class="text-xs bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-3 py-1 rounded font-semibold">📋 Sao chép link Form này</button>
             </div>
             <form id="f2-form" class="space-y-4">
                 <div>
                     <label class="block text-sm font-semibold mb-1">Họ và Tên (*)</label>
-                    <input type="text" id="f2-fullName" required class="w-full border p-2 rounded focus:ring-2 focus:ring-emerald-500">
+                    <input type="text" id="f2-fullName" required class="w-full border p-2 rounded">
                 </div>
                 <div>
                     <label class="block text-sm font-semibold mb-1">Mã Số Sinh Viên (MSSV) (*)</label>
-                    <input type="text" id="f2-studentId" required class="w-full border p-2 rounded focus:ring-2 focus:ring-emerald-500">
+                    <input type="text" id="f2-studentId" required class="w-full border p-2 rounded">
                 </div>
                 <div>
                     <label class="block text-sm font-semibold mb-1">Tên chiến dịch lớn (*)</label>
-                    <input type="text" id="f2-campaignName" placeholder="VD: Mùa Hè Xanh 2026" required class="w-full border p-2 rounded focus:ring-2 focus:ring-emerald-500">
+                    <input type="text" id="f2-campaignName" placeholder="VD: Mùa Hè Xanh 2026" required class="w-full border p-2 rounded">
                 </div>
                 <button type="submit" class="bg-emerald-700 text-white font-bold px-6 py-2 rounded hover:bg-emerald-800 w-full">Gửi chiến dịch</button>
             </form>
         </div>
 
-        <!-- TAB 3: FORM GHI CHÚ BỔ SUNG (CẦN ADMIN) -->
+        <!-- TAB 3 -->
         <div id="tab-form3" class="tab-content hidden bg-white p-6 rounded shadow max-w-2xl mx-auto">
             <div class="flex justify-between items-center border-b pb-2 mb-4">
-                <h2 class="text-lg font-bold text-amber-800">Form 3: Ghi nhận Vi phạm / Thành tích / Ghi chú (Cần Admin)</h2>
-                <button onclick="copyFormLink('form3')" class="text-xs bg-amber-100 text-amber-700 hover:bg-amber-200 px-3 py-1 rounded font-semibold flex items-center gap-1">📋 Sao chép link Form này</button>
+                <h2 class="text-lg font-bold text-amber-800">Form 3: Ghi nhận Vi phạm / Thành tích / Ghi chú (Admin)</h2>
+                <button onclick="copyFormLink('form3')" class="text-xs bg-amber-100 text-amber-700 hover:bg-amber-200 px-3 py-1 rounded font-semibold">📋 Sao chép link Form này</button>
             </div>
             <form id="f3-form" class="space-y-4">
                 <div>
@@ -157,11 +158,11 @@
             </form>
         </div>
 
-        <!-- TAB 4: TRA CỨU CÁ NHÂN -->
+        <!-- TAB 4 -->
         <div id="tab-lookup" class="tab-content hidden bg-white p-6 rounded shadow max-w-2xl mx-auto">
             <div class="flex justify-between items-center border-b pb-2 mb-4">
                 <h2 class="text-lg font-bold text-purple-800">Tra cứu kết quả cá nhân</h2>
-                <button onclick="copyFormLink('lookup')" class="text-xs bg-purple-100 text-purple-700 hover:bg-purple-200 px-3 py-1 rounded font-semibold flex items-center gap-1">📋 Sao chép link Form này</button>
+                <button onclick="copyFormLink('lookup')" class="text-xs bg-purple-100 text-purple-700 hover:bg-purple-200 px-3 py-1 rounded font-semibold">📋 Sao chép link Form này</button>
             </div>
             <form id="lookup-form" class="space-y-4 mb-6">
                 <div>
@@ -177,7 +178,7 @@
             <div id="lookup-result" class="hidden border-t pt-4"></div>
         </div>
 
-        <!-- TAB 5: BẢNG TỔNG KẾT & DUYỆT HỒ SƠ -->
+        <!-- TAB 5: BẢNG TỔNG KẾT ĐA TẦNG CÓ NÚT XÓA LẺ -->
         <div id="tab-summary" class="tab-content hidden bg-white p-6 rounded shadow">
             <h2 class="text-lg font-bold text-slate-800 mb-4">Bảng tổng kết quá trình hoạt động</h2>
 
@@ -189,7 +190,7 @@
 
             <div id="summary-content" class="hidden space-y-6">
                 
-                <!-- BỘ LỌC TỪ 0 ĐẾN 10 VÀ >= 3 BUỔI -->
+                <!-- BỘ LỌC -->
                 <div class="bg-slate-50 p-4 border rounded grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
                         <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Tìm Tên / MSSV:</label>
@@ -232,7 +233,7 @@
                     </div>
                 </div>
 
-                <!-- DỮ LIỆU ĐANG CHỜ DUYỆT (NẾU CÓ) -->
+                <!-- KHUNG CHỜ DUYỆT -->
                 <div id="pending-box" class="hidden border border-amber-300 bg-amber-50 p-4 rounded">
                     <h3 class="font-bold text-amber-800 text-sm mb-2 uppercase">⏳ Danh sách hồ sơ mới khởi tạo (Chờ duyệt)</h3>
                     <div class="overflow-x-auto">
@@ -250,22 +251,32 @@
                     </div>
                 </div>
 
-                <!-- BẢNG TỔNG KẾT CHÍNH TỨC -->
+                <!-- BẢNG TỔNG KẾT ĐA TẦNG CHO PHÉP XÓA LẺ -->
                 <div>
-                    <h3 class="font-bold text-slate-700 text-sm mb-2 uppercase">✅ Danh sách Tình nguyện viên chính thức</h3>
+                    <h3 class="font-bold text-slate-700 text-sm mb-2 uppercase">✅ Bảng tổng kết chi tiết Tình nguyện viên (Bấm ❌ để xóa mục lẻ)</h3>
                     <div class="overflow-x-auto">
-                        <table class="w-full border-collapse bg-white text-sm">
+                        <table class="w-full border-collapse bg-white text-xs">
                             <thead>
-                                <tr class="bg-slate-200 text-slate-800 font-bold">
-                                    <th class="p-2">STT</th>
-                                    <th class="p-2">Họ và Tên</th>
-                                    <th class="p-2">MSSV</th>
-                                    <th class="p-2">Số buổi TN</th>
-                                    <th class="p-2">Chiến dịch lớn</th>
-                                    <th class="p-2">Lỗi vi phạm</th>
-                                    <th class="p-2">Thành tích</th>
-                                    <th class="p-2">Ghi chú</th>
-                                    <th class="p-2">Thao tác</th>
+                                <tr class="bg-slate-200 font-bold text-slate-800">
+                                    <th rowspan="2" class="p-2 w-10">STT</th>
+                                    <th rowspan="2" class="p-2 w-32">Họ và Tên</th>
+                                    <th rowspan="2" class="p-2 w-24">MSSV</th>
+                                    <th colspan="3" class="p-2 bg-blue-100 text-blue-900 border-b">PHẦN TÌNH NGUYỆN</th>
+                                    <th colspan="3" class="p-2 bg-red-100 text-red-900 border-b">PHẦN VI PHẠM</th>
+                                    <th colspan="3" class="p-2 bg-emerald-100 text-emerald-900 border-b">CHIẾN DỊCH LỚN</th>
+                                    <th rowspan="2" class="p-2 w-36 bg-slate-100">GHI CHÚ</th>
+                                    <th rowspan="2" class="p-2 w-12">Hồ sơ</th>
+                                </tr>
+                                <tr class="bg-slate-100 font-semibold text-slate-700">
+                                    <th class="p-2 bg-blue-50">Công việc hỗ trợ</th>
+                                    <th class="p-2 bg-blue-50 w-24">Ngày/Tháng/Năm</th>
+                                    <th class="p-2 bg-blue-50 w-16">Tổng số buổi</th>
+                                    <th class="p-2 bg-red-50">Tên Lỗi</th>
+                                    <th class="p-2 bg-red-50 w-24">Ngày/Tháng/Năm</th>
+                                    <th class="p-2 bg-red-50 w-16">Tổng vi phạm</th>
+                                    <th class="p-2 bg-emerald-50">Tên chiến dịch</th>
+                                    <th class="p-2 bg-emerald-50">Thành tích nổi bật</th>
+                                    <th class="p-2 bg-emerald-50 w-16">Tổng chiến dịch</th>
                                 </tr>
                             </thead>
                             <tbody id="summary-tbody"></tbody>
@@ -298,7 +309,6 @@
             }
         }
 
-        // Sao chép link chứa tham số form
         function copyFormLink(formName) {
             const baseUrl = window.location.origin + window.location.pathname;
             const fullUrl = `${baseUrl}?form=${formName}`;
@@ -309,7 +319,6 @@
             });
         }
 
-        // Tự động mở đúng Form dựa vào URL param khi trang web load
         window.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
             const formParam = urlParams.get('form');
@@ -325,7 +334,6 @@
             document.getElementById('f3-field-note').classList.toggle('hidden', cat !== 'note');
         }
 
-        // Form 0
         document.getElementById('init-form').onsubmit = async (e) => {
             e.preventDefault();
             const res = await fetch('/api/volunteers/register', {
@@ -341,7 +349,6 @@
             if (res.ok) e.target.reset();
         };
 
-        // Form 1
         document.getElementById('f1-form').onsubmit = async (e) => {
             e.preventDefault();
             const res = await fetch('/api/volunteers/activity', {
@@ -359,7 +366,6 @@
             if (res.ok) e.target.reset();
         };
 
-        // Form 2
         document.getElementById('f2-form').onsubmit = async (e) => {
             e.preventDefault();
             const res = await fetch('/api/volunteers/campaign', {
@@ -376,7 +382,6 @@
             if (res.ok) e.target.reset();
         };
 
-        // Form 3
         document.getElementById('f3-form').onsubmit = async (e) => {
             e.preventDefault();
             const adminPass = document.getElementById('f3-adminPass').value.trim();
@@ -409,7 +414,6 @@
             }
         };
 
-        // Tra Cứu Cá Nhân
         document.getElementById('lookup-form').onsubmit = async (e) => {
             e.preventDefault();
             const res = await fetch('/api/volunteers/my-profile', {
@@ -436,16 +440,15 @@
                     <h3 class="text-lg font-bold text-purple-900 mb-2">${data.fullName} - MSSV: ${data.studentId}</h3>
                     <div class="space-y-2 text-sm">
                         <p><b>Số buổi TN (${data.activityCount}):</b> ${data.activities.map(a => `${a.jobContent} (${a.date})`).join(', ') || 'Chưa có'}</p>
-                        <p><b>Chiến dịch lớn (${data.campaignCount}):</b> ${data.campaigns.join(', ') || 'Chưa có'}</p>
+                        <p><b>Chiến dịch lớn (${data.campaignCount}):</b> ${data.campaigns.map(c => c.campaignName).join(', ') || 'Chưa có'}</p>
                         <p class="text-red-700"><b>Lỗi vi phạm (${data.violationCount}):</b> ${data.violations.map(v => `${v.error} (${v.date})`).join(', ') || 'Không có'}</p>
-                        <p class="text-emerald-700"><b>Thành tích:</b> ${data.achievements.join(', ') || 'Chưa có'}</p>
-                        <p class="text-blue-700"><b>Ghi chú khác:</b> ${data.generalNotes.join(', ') || 'Chưa có'}</p>
+                        <p class="text-emerald-700"><b>Thành tích:</b> ${data.achievements.map(a => a.content).join(', ') || 'Chưa có'}</p>
+                        <p class="text-blue-700"><b>Ghi chú khác:</b> ${data.generalNotes.map(n => n.content).join(', ') || 'Chưa có'}</p>
                     </div>
                 </div>
             `;
         };
 
-        // Mở khóa Bảng tổng kết
         async function unlockSummaryTable() {
             const pass = document.getElementById('summary-admin-pass').value.trim();
             if (!pass) return alert('Vui lòng nhập mật khẩu!');
@@ -468,7 +471,6 @@
             renderAllTables(rawVolunteersData);
         }
 
-        // Lọc Số Buổi TN
         function applyExcelFilters() {
             const search = document.getElementById('fl-search').value.toLowerCase();
             const actFilter = document.getElementById('fl-activities').value;
@@ -514,7 +516,7 @@
                 pendingBox.classList.remove('hidden');
                 pendingTbody.innerHTML = pendingList.map(v => `
                     <tr class="hover:bg-amber-100/50">
-                        <td class="p-2 font-semibold">${v.fullName}</td>
+                        <td class="p-2 font-semibold text-left">${v.fullName}</td>
                         <td class="p-2">${v.studentId}</td>
                         <td class="p-2">${new Date(v.createdAt).toLocaleString('vi-VN')}</td>
                         <td class="p-2 space-x-2">
@@ -530,23 +532,97 @@
             renderSummaryTable(approvedList);
         }
 
+        // BẢNG TỔNG KẾT CHO PHÉP XÓA TỪNG MỤC LẺ BẰNG DẤU [❌]
         function renderSummaryTable(data) {
             const tbody = document.getElementById('summary-tbody');
-            tbody.innerHTML = data.map((v, i) => `
-                <tr class="hover:bg-slate-50">
-                    <td class="p-2">${i + 1}</td>
-                    <td class="p-2 font-semibold text-left">${v.fullName}</td>
-                    <td class="p-2">${v.studentId}</td>
-                    <td class="p-2 font-bold text-blue-700">${v.activityCount}</td>
-                    <td class="p-2 font-bold text-emerald-700">${v.campaignCount}</td>
-                    <td class="p-2 font-bold text-red-700">${v.violationCount}</td>
-                    <td class="p-2 text-xs text-left">${v.achievements.join('; ') || '-'}</td>
-                    <td class="p-2 text-xs text-left">${v.generalNotes.join('; ') || '-'}</td>
-                    <td class="p-2">
-                        <button onclick="deleteVolunteerRecord(${v.id})" class="text-red-600 font-bold hover:underline text-xs">Xóa</button>
-                    </td>
-                </tr>
-            `).join('');
+            tbody.innerHTML = data.map((v, i) => {
+                
+                // Hiển thị công việc + nút xóa lẻ
+                const actJobs = v.activities.length ? v.activities.map(a => 
+                    `<div class="flex justify-between items-center group my-0.5">
+                        <span>${a.jobContent}</span>
+                        <button onclick="deleteSingleItem('activity', ${a.id})" class="text-red-500 font-bold hover:text-red-700 ml-1 text-xs">❌</button>
+                     </div>`
+                ).join('') : '-';
+
+                // Hiển thị ngày tháng buổi tình nguyện
+                const actDates = v.activities.length ? v.activities.map(a => `<div>${a.date}</div>`).join('') : '-';
+
+                // Hiển thị lỗi vi phạm + nút xóa lẻ
+                const violErrors = v.violations.length ? v.violations.map(vl => 
+                    `<div class="flex justify-between items-center group my-0.5">
+                        <span>${vl.error}</span>
+                        <button onclick="deleteSingleItem('violation', ${vl.id})" class="text-red-500 font-bold hover:text-red-700 ml-1 text-xs">❌</button>
+                     </div>`
+                ).join('') : '-';
+
+                // Hiển thị ngày vi phạm
+                const violDates = v.violations.length ? v.violations.map(vl => `<div>${vl.date}</div>`).join('') : '-';
+
+                // Hiển thị chiến dịch + nút xóa lẻ
+                const campNames = v.campaigns.length ? v.campaigns.map(c => 
+                    `<div class="flex justify-between items-center group my-0.5">
+                        <span>${c.campaignName}</span>
+                        <button onclick="deleteSingleItem('campaign', ${c.id})" class="text-red-500 font-bold hover:text-red-700 ml-1 text-xs">❌</button>
+                     </div>`
+                ).join('') : '-';
+
+                // Hiển thị thành tích + nút xóa lẻ
+                const achievements = v.achievements.length ? v.achievements.map(ac => 
+                    `<div class="flex justify-between items-center group my-0.5">
+                        <span>${ac.content}</span>
+                        <button onclick="deleteSingleItem('achievement', ${ac.id})" class="text-red-500 font-bold hover:text-red-700 ml-1 text-xs">❌</button>
+                     </div>`
+                ).join('') : '-';
+
+                // Hiển thị ghi chú + nút xóa lẻ
+                const notes = v.generalNotes.length ? v.generalNotes.map(n => 
+                    `<div class="flex justify-between items-center group my-0.5">
+                        <span>${n.content}</span>
+                        <button onclick="deleteSingleItem('note', ${n.id})" class="text-red-500 font-bold hover:text-red-700 ml-1 text-xs">❌</button>
+                     </div>`
+                ).join('') : '-';
+
+                return `
+                    <tr class="hover:bg-slate-50">
+                        <td class="p-2 font-medium">${i + 1}</td>
+                        <td class="p-2 font-bold text-left">${v.fullName}</td>
+                        <td class="p-2">${v.studentId}</td>
+
+                        <!-- TÌNH NGUYỆN -->
+                        <td class="p-2 text-left bg-blue-50/30">${actJobs}</td>
+                        <td class="p-2 bg-blue-50/30">${actDates}</td>
+                        <td class="p-2 font-bold text-blue-700 bg-blue-50/50">${v.activityCount}</td>
+
+                        <!-- VI PHẠM -->
+                        <td class="p-2 text-left bg-red-50/30">${violErrors}</td>
+                        <td class="p-2 bg-red-50/30">${violDates}</td>
+                        <td class="p-2 font-bold text-red-700 bg-red-50/50">${v.violationCount}</td>
+
+                        <!-- CHIẾN DỊCH LỚN & THÀNH TÍCH -->
+                        <td class="p-2 text-left bg-emerald-50/30">${campNames}</td>
+                        <td class="p-2 text-left bg-emerald-50/30">${achievements}</td>
+                        <td class="p-2 font-bold text-emerald-700 bg-emerald-50/50">${v.campaignCount}</td>
+
+                        <!-- GHI CHÚ -->
+                        <td class="p-2 text-left bg-slate-50">${notes}</td>
+
+                        <td class="p-2">
+                            <button onclick="deleteVolunteerRecord(${v.id})" class="text-red-600 font-bold hover:underline text-xs" title="Xóa toàn bộ hồ sơ Tình nguyện viên này">Xóa hồ sơ</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // HÀM XÓA LẺ TỪNG MỤC
+        async function deleteSingleItem(type, itemId) {
+            if (!confirm('Bạn có chắc chắn muốn xóa mục này?')) return;
+            const res = await fetch(`/api/items/${type}/${itemId}`, {
+                method: 'DELETE',
+                headers: { 'x-admin-password': currentAdminPass }
+            });
+            if (res.ok) unlockSummaryTable();
         }
 
         async function approveRecord(id) {
@@ -559,7 +635,7 @@
         }
 
         async function deleteVolunteerRecord(id) {
-            if (!confirm('Xóa hồ sơ này khỏi hệ thống?')) return;
+            if (!confirm('CẢNH BÁO: Bạn có chắc muốn XÓA HOÀN TOÀN hồ sơ và toàn bộ dữ liệu của Tình nguyện viên này?')) return;
             const res = await fetch(`/api/volunteers/${id}`, {
                 method: 'DELETE',
                 headers: { 'x-admin-password': currentAdminPass }
