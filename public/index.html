@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quản lý Tình nguyện viên - Kỳ 2026.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Thư viện Xuất File Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         table th, table td {
             border: 1px solid #cbd5e1;
@@ -178,9 +180,20 @@
             <div id="lookup-result" class="hidden border-t pt-4"></div>
         </div>
 
-        <!-- TAB 5: BẢNG TỔNG KẾT ĐA TẦNG CÓ NÚT XÓA LẺ -->
+        <!-- TAB 5: BẢNG TỔNG KẾT VỚI NÚT XUẤT EXCEL VÀ KHÔI PHỤC DỮ LIỆU -->
         <div id="tab-summary" class="tab-content hidden bg-white p-6 rounded shadow">
-            <h2 class="text-lg font-bold text-slate-800 mb-4">Bảng tổng kết quá trình hoạt động</h2>
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
+                <h2 class="text-lg font-bold text-slate-800">Bảng tổng kết quá trình hoạt động</h2>
+                
+                <div id="admin-actions-bar" class="hidden flex flex-wrap gap-2">
+                    <button onclick="exportToExcel()" class="bg-emerald-700 text-white font-bold px-4 py-2 rounded hover:bg-emerald-800 text-xs flex items-center gap-1 shadow">
+                        📊 Xuất Bảng Tổng Kết File Excel
+                    </button>
+                    <button onclick="restoreBackupData()" class="bg-amber-600 text-white font-bold px-4 py-2 rounded hover:bg-amber-700 text-xs flex items-center gap-1 shadow">
+                        💾 Khôi phục Dữ liệu CSDL
+                    </button>
+                </div>
+            </div>
 
             <div id="admin-lock-box" class="p-6 bg-slate-50 border rounded text-center max-w-md mx-auto my-6">
                 <p class="font-medium text-slate-700 mb-3">Vui lòng nhập Mật Khẩu Admin để mở khóa Bảng tổng kết:</p>
@@ -251,7 +264,7 @@
                     </div>
                 </div>
 
-                <!-- BẢNG TỔNG KẾT ĐA TẦNG CHO PHÉP XÓA LẺ -->
+                <!-- BẢNG TỔNG KẾT ĐA TẦNG CHI TIẾT -->
                 <div>
                     <h3 class="font-bold text-slate-700 text-sm mb-2 uppercase">✅ Bảng tổng kết chi tiết Tình nguyện viên (Bấm ❌ để xóa mục lẻ)</h3>
                     <div class="overflow-x-auto">
@@ -467,6 +480,7 @@
 
             document.getElementById('admin-lock-box').classList.add('hidden');
             document.getElementById('summary-content').classList.remove('hidden');
+            document.getElementById('admin-actions-bar').classList.remove('hidden');
 
             renderAllTables(rawVolunteersData);
         }
@@ -532,12 +546,10 @@
             renderSummaryTable(approvedList);
         }
 
-        // BẢNG TỔNG KẾT CHO PHÉP XÓA TỪNG MỤC LẺ BẰNG DẤU [❌]
         function renderSummaryTable(data) {
             const tbody = document.getElementById('summary-tbody');
             tbody.innerHTML = data.map((v, i) => {
                 
-                // Hiển thị công việc + nút xóa lẻ
                 const actJobs = v.activities.length ? v.activities.map(a => 
                     `<div class="flex justify-between items-center group my-0.5">
                         <span>${a.jobContent}</span>
@@ -545,10 +557,8 @@
                      </div>`
                 ).join('') : '-';
 
-                // Hiển thị ngày tháng buổi tình nguyện
                 const actDates = v.activities.length ? v.activities.map(a => `<div>${a.date}</div>`).join('') : '-';
 
-                // Hiển thị lỗi vi phạm + nút xóa lẻ
                 const violErrors = v.violations.length ? v.violations.map(vl => 
                     `<div class="flex justify-between items-center group my-0.5">
                         <span>${vl.error}</span>
@@ -556,10 +566,8 @@
                      </div>`
                 ).join('') : '-';
 
-                // Hiển thị ngày vi phạm
                 const violDates = v.violations.length ? v.violations.map(vl => `<div>${vl.date}</div>`).join('') : '-';
 
-                // Hiển thị chiến dịch + nút xóa lẻ
                 const campNames = v.campaigns.length ? v.campaigns.map(c => 
                     `<div class="flex justify-between items-center group my-0.5">
                         <span>${c.campaignName}</span>
@@ -567,7 +575,6 @@
                      </div>`
                 ).join('') : '-';
 
-                // Hiển thị thành tích + nút xóa lẻ
                 const achievements = v.achievements.length ? v.achievements.map(ac => 
                     `<div class="flex justify-between items-center group my-0.5">
                         <span>${ac.content}</span>
@@ -575,7 +582,6 @@
                      </div>`
                 ).join('') : '-';
 
-                // Hiển thị ghi chú + nút xóa lẻ
                 const notes = v.generalNotes.length ? v.generalNotes.map(n => 
                     `<div class="flex justify-between items-center group my-0.5">
                         <span>${n.content}</span>
@@ -615,7 +621,65 @@
             }).join('');
         }
 
-        // HÀM XÓA LẺ TỪNG MỤC
+        // HÀM XUẤT BẢNG TỔNG KẾT RA FILE EXCEL
+        function exportToExcel() {
+            if (!rawVolunteersData || rawVolunteersData.length === 0) {
+                return alert('Không có dữ liệu để xuất Excel!');
+            }
+
+            const approvedList = rawVolunteersData.filter(v => v.isApproved === 1);
+            if (approvedList.length === 0) {
+                return alert('Chưa có hồ sơ Tình nguyện viên chính thức nào!');
+            }
+
+            const excelData = approvedList.map((v, i) => ({
+                'STT': i + 1,
+                'Họ và Tên': v.fullName,
+                'MSSV': v.studentId,
+                'Công việc hỗ trợ': v.activities.map(a => a.jobContent).join('; '),
+                'Ngày thực hiện (TN)': v.activities.map(a => a.date).join('; '),
+                'Tổng số buổi': v.activityCount,
+                'Lỗi vi phạm': v.violations.map(vl => vl.error).join('; '),
+                'Ngày vi phạm': v.violations.map(vl => vl.date).join('; '),
+                'Tổng vi phạm': v.violationCount,
+                'Tên chiến dịch lớn': v.campaigns.map(c => c.campaignName).join('; '),
+                'Thành tích nổi bật': v.achievements.map(ac => ac.content).join('; '),
+                'Tổng chiến dịch': v.campaignCount,
+                'Ghi chú': v.generalNotes.map(n => n.content).join('; ')
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(excelData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "TongKetTNV");
+
+            // Tự động định dạng độ rộng cột
+            worksheet['!cols'] = [
+                { wch: 5 }, { wch: 22 }, { wch: 12 },
+                { wch: 30 }, { wch: 20 }, { wch: 12 },
+                { wch: 25 }, { wch: 18 }, { wch: 12 },
+                { wch: 25 }, { wch: 25 }, { wch: 14 }, { wch: 30 }
+            ];
+
+            const today = new Date().toISOString().slice(0, 10);
+            XLSX.writeFile(workbook, `Tong_Ket_TNV_Ky_2026.1_${today}.xlsx`);
+        }
+
+        // HÀM KHÔI PHỤC DỮ LIỆU TỪ BẢN SAO LƯU
+        async function restoreBackupData() {
+            if (!confirm('CẢNH BÁO: Hành động này sẽ ghi đè toàn bộ dữ liệu hiện tại bằng bản sao lưu CSDL gần nhất. Bạn có chắc chắn không?')) return;
+
+            const res = await fetch('/api/admin/restore-backup', {
+                method: 'POST',
+                headers: { 'x-admin-password': currentAdminPass }
+            });
+
+            const data = await res.json();
+            alert(data.message || data.error);
+            if (res.ok) {
+                unlockSummaryTable();
+            }
+        }
+
         async function deleteSingleItem(type, itemId) {
             if (!confirm('Bạn có chắc chắn muốn xóa mục này?')) return;
             const res = await fetch(`/api/items/${type}/${itemId}`, {
