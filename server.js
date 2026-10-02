@@ -2,19 +2,22 @@ const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const cors = require('cors');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// MẬT KHẨU QUẢN TRỊ CỐ ĐỊNH
+// MẬT KHẨU QUẢN TRỊ CỐ ĐỊNH (Không phân biệt chữ hoa/thường)
 const ADMIN_PASSWORD = 'OPTC140921';
+
+// Đường dẫn CSDL và Bản sao lưu
+const DB_PATH = process.env.RENDER_DISK_PATH ? path.join(process.env.RENDER_DISK_PATH, 'database.sqlite') : './database.sqlite';
+const BACKUP_PATH = './database_backup.sqlite';
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Phục vụ tĩnh giao diện
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Middleware kiểm tra mật khẩu Admin
@@ -32,10 +35,12 @@ function normalizeString(str) {
 }
 
 // Khởi tạo CSDL SQLite
-const db = new sqlite3.Database('./database.sqlite', (err) => {
+let db = new sqlite3.Database(DB_PATH, (err) => {
     if (!err) {
-        console.log('Đã kết nối CSDL SQLite.');
+        console.log(`Đã kết nối CSDL SQLite tại: ${DB_PATH}`);
         initDatabase();
+    } else {
+        console.error('Lỗi kết nối CSDL:', err.message);
     }
 });
 
@@ -93,6 +98,18 @@ function initDatabase() {
     });
 }
 
+// Tự động sao lưu dữ liệu mỗi 30 phút một lần
+setInterval(() => {
+    try {
+        if (fs.existsSync(DB_PATH)) {
+            fs.copyFileSync(DB_PATH, BACKUP_PATH);
+            console.log('[TỰ ĐỘNG SAO LƯU] Đã tạo bản sao lưu CSDL thành công!');
+        }
+    } catch (e) {
+        console.error('[LỖI SAO LƯU]', e);
+    }
+}, 30 * 60 * 1000);
+
 // Tác vụ dọn dẹp tài khoản chưa duyệt quá 24h
 setInterval(() => {
     const query = `DELETE FROM volunteers WHERE isApproved = 0 AND createdAt <= datetime('now', '-1 day')`;
@@ -137,7 +154,7 @@ app.post('/api/volunteers/register', (req, res) => {
 app.post('/api/volunteers/activity', (req, res) => {
     const { fullName, studentId, jobContent, date } = req.body;
     findVolunteer(fullName, studentId, (err, volunteer) => {
-        if (!volunteer) return res.status(404).json({ error: 'Không tìm thấy TNV!' });
+        if (!volunteer) return res.status(404).json({ error: 'Không tìm thấy TNV trong hệ thống!' });
         db.run(`INSERT INTO activities (volunteerId, jobContent, date) VALUES (?, ?, ?)`,
             [volunteer.id, jobContent.trim(), date],
             () => res.json({ message: 'Thêm buổi tình nguyện thành công!' })
@@ -148,7 +165,7 @@ app.post('/api/volunteers/activity', (req, res) => {
 app.post('/api/volunteers/campaign', (req, res) => {
     const { fullName, studentId, campaignName } = req.body;
     findVolunteer(fullName, studentId, (err, volunteer) => {
-        if (!volunteer) return res.status(404).json({ error: 'Không tìm thấy TNV!' });
+        if (!volunteer) return res.status(404).json({ error: 'Không tìm thấy TNV trong hệ thống!' });
         db.run(`INSERT INTO campaigns (volunteerId, campaignName) VALUES (?, ?)`,
             [volunteer.id, campaignName.trim()],
             () => res.json({ message: 'Ghi nhận chiến dịch thành công!' })
@@ -159,7 +176,7 @@ app.post('/api/volunteers/campaign', (req, res) => {
 app.post('/api/volunteers/additional-info', verifyAdmin, (req, res) => {
     const { fullName, studentId, category, violationError, violationDate, achievementContent, noteContent } = req.body;
     findVolunteer(fullName, studentId, (err, volunteer) => {
-        if (!volunteer) return res.status(404).json({ error: 'Không tìm thấy TNV!' });
+        if (!volunteer) return res.status(404).json({ error: 'Không tìm thấy TNV trong hệ thống!' });
 
         if (category === 'violation') {
             db.run(`INSERT INTO violations (volunteerId, error, date) VALUES (?, ?, ?)`, [volunteer.id, violationError.trim(), violationDate], 
@@ -205,7 +222,7 @@ app.post('/api/volunteers/my-profile', (req, res) => {
     });
 });
 
-// Bảng tổng kết lấy ID từng mục để cho phép xóa lẻ
+// Bảng tổng kết đầy đủ
 app.get('/api/volunteers', verifyAdmin, (req, res) => {
     const query = `SELECT * FROM volunteers ORDER BY id DESC`;
 
@@ -242,16 +259,16 @@ app.get('/api/volunteers', verifyAdmin, (req, res) => {
     });
 });
 
+// Duyệt & Xóa TNV
 app.post('/api/volunteers/:id/approve', verifyAdmin, (req, res) => {
     db.run(`UPDATE volunteers SET isApproved = 1 WHERE id = ?`, [req.params.id], () => res.json({ message: 'Đã duyệt!' }));
 });
 
-// Xóa toàn bộ hồ sơ TNV
 app.delete('/api/volunteers/:id', verifyAdmin, (req, res) => {
     db.run(`DELETE FROM volunteers WHERE id = ?`, [req.params.id], () => res.json({ message: 'Đã xóa hồ sơ!' }));
 });
 
-// --- BỔ SUNG CÁC API XÓA LẺ TỪNG MỤC ---
+// Xóa lẻ từng mục
 app.delete('/api/items/activity/:id', verifyAdmin, (req, res) => {
     db.run(`DELETE FROM activities WHERE id = ?`, [req.params.id], () => res.json({ message: 'Đã xóa buổi tình nguyện!' }));
 });
@@ -270,6 +287,20 @@ app.delete('/api/items/achievement/:id', verifyAdmin, (req, res) => {
 
 app.delete('/api/items/note/:id', verifyAdmin, (req, res) => {
     db.run(`DELETE FROM general_notes WHERE id = ?`, [req.params.id], () => res.json({ message: 'Đã xóa ghi chú!' }));
+});
+
+// --- ROUTE KHÔI PHỤC DỮ LIỆU CSDL TỪ BẢN SAO LƯU ---
+app.post('/api/admin/restore-backup', verifyAdmin, (req, res) => {
+    try {
+        if (fs.existsSync(BACKUP_PATH)) {
+            fs.copyFileSync(BACKUP_PATH, DB_PATH);
+            res.json({ message: 'Đã khôi phục thành công dữ liệu từ bản sao lưu gần nhất!' });
+        } else {
+            res.status(404).json({ error: 'Chưa tìm thấy bản sao lưu nào trên hệ thống!' });
+        }
+    } catch (e) {
+        res.status(500).json({ error: 'Lỗi trong quá trình khôi phục CSDL!' });
+    }
 });
 
 app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
