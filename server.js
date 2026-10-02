@@ -7,7 +7,6 @@ const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = 'OPTC140921';
 
 // Lấy URL và Token từ biến môi trường Render
-// Chuyển libsql:// thành https:// để gọi HTTP API trực tiếp của Turso
 let rawUrl = (process.env.TURSO_DATABASE_URL || '').trim();
 if (rawUrl.startsWith('libsql://')) {
     rawUrl = rawUrl.replace('libsql://', 'https://');
@@ -26,7 +25,14 @@ async function tursoQuery(sql, args = []) {
             requests: [
                 {
                     type: 'execute',
-                    stmt: { sql, args: args.map(val => val === null ? { type: 'null' } : typeof val === 'number' ? { type: 'integer', value: val.toString() } : { type: 'text', value: val.toString() }) }
+                    stmt: { 
+                        sql, 
+                        args: args.map(val => 
+                            val === null ? { type: 'null' } : 
+                            typeof val === 'number' ? { type: 'integer', value: val.toString() } : 
+                            { type: 'text', value: val.toString() }
+                        ) 
+                    }
                 },
                 { type: 'close' }
             ]
@@ -35,10 +41,15 @@ async function tursoQuery(sql, args = []) {
     
     const data = await response.json();
     if (!response.ok || data.batched_results?.[0]?.type === 'error') {
-        throw new Error(JSON.stringify(data));
+        const errDetails = data.batched_results?.[0]?.error?.message || JSON.stringify(data);
+        throw new Error(errDetails);
     }
     
-    const result = data.batched_results[0].response.result;
+    const result = data.batched_results?.[0]?.response?.result;
+    if (!result || !result.cols || !result.rows) {
+        return { rows: [] };
+    }
+
     const cols = result.cols.map(c => c.name);
     const rows = result.rows.map(row => {
         let obj = {};
@@ -263,4 +274,4 @@ app.delete('/api/items/note/:id', verifyAdmin, async (req, res) => {
 });
 
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
-                
+        
