@@ -11,8 +11,8 @@ const ADMIN_PASSWORD = 'OPTC140921';
 
 // Kết nối Cơ sở dữ liệu Cloud Turso
 const db = createClient({
-  url: process.env.TURSO_DATABASE_URL,
-  authToken: process.env.TURSO_AUTH_TOKEN,
+  url: process.env.TURSO_DATABASE_URL ? process.env.TURSO_DATABASE_URL.trim() : '',
+  authToken: process.env.TURSO_AUTH_TOKEN ? process.env.TURSO_AUTH_TOKEN.trim() : '',
 });
 
 // Middleware
@@ -35,7 +35,7 @@ function normalizeString(str) {
     return str.toString().trim().toLowerCase();
 }
 
-// Khởi tạo các bảng trên Turso Cloud
+// Khởi tạo từng bảng riêng lẻ tránh lỗi Migration 400
 async function initDatabase() {
     try {
         await db.execute(`CREATE TABLE IF NOT EXISTS volunteers (
@@ -85,7 +85,7 @@ async function initDatabase() {
 
         console.log("✅ Đã kết nối & khởi tạo bảng thành công trên Turso Cloud Database.");
     } catch (e) {
-        console.error("❌ Lỗi khởi tạo bảng Turso:", e);
+        console.error("❌ Lỗi khởi tạo bảng Turso:", e.message || e);
     }
 }
 initDatabase();
@@ -273,7 +273,7 @@ app.delete('/api/volunteers/:id', verifyAdmin, async (req, res) => {
     }
 });
 
-// --- API XÓA LẺ TỪNG MỤC ---
+// API XÓA LẺ TỪNG MỤC
 app.delete('/api/items/activity/:id', verifyAdmin, async (req, res) => {
     try {
         await db.execute({ sql: `DELETE FROM activities WHERE id = ?`, args: [req.params.id] });
