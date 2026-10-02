@@ -9,10 +9,15 @@ const PORT = process.env.PORT || 3000;
 // MẬT KHẨU QUẢN TRỊ CỐ ĐỊNH
 const ADMIN_PASSWORD = 'OPTC140921';
 
-// Kết nối Cơ sở dữ liệu Cloud Turso
+// Lấy biến môi trường và chuẩn hóa
+let dbUrl = (process.env.TURSO_DATABASE_URL || '').trim();
+if (dbUrl.startsWith('https://')) {
+    dbUrl = dbUrl.replace('https://', 'libsql://');
+}
+
 const db = createClient({
-  url: process.env.TURSO_DATABASE_URL ? process.env.TURSO_DATABASE_URL.trim() : '',
-  authToken: process.env.TURSO_AUTH_TOKEN ? process.env.TURSO_AUTH_TOKEN.trim() : '',
+  url: dbUrl,
+  authToken: (process.env.TURSO_AUTH_TOKEN || '').trim(),
 });
 
 // Middleware
@@ -35,53 +40,50 @@ function normalizeString(str) {
     return str.toString().trim().toLowerCase();
 }
 
-// Khởi tạo từng bảng riêng lẻ tránh lỗi Migration 400
+// Khởi tạo bảng bằng batch để tránh lỗi Migration 400
 async function initDatabase() {
     try {
-        await db.execute(`CREATE TABLE IF NOT EXISTS volunteers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            fullName TEXT NOT NULL,
-            studentId TEXT NOT NULL UNIQUE,
-            isApproved INTEGER DEFAULT 0,
-            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-        )`);
-
-        await db.execute(`CREATE TABLE IF NOT EXISTS activities (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            volunteerId INTEGER NOT NULL,
-            jobContent TEXT NOT NULL,
-            date TEXT NOT NULL,
-            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-        )`);
-
-        await db.execute(`CREATE TABLE IF NOT EXISTS campaigns (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            volunteerId INTEGER NOT NULL,
-            campaignName TEXT NOT NULL,
-            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-        )`);
-
-        await db.execute(`CREATE TABLE IF NOT EXISTS violations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            volunteerId INTEGER NOT NULL,
-            error TEXT NOT NULL,
-            date TEXT NOT NULL,
-            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-        )`);
-
-        await db.execute(`CREATE TABLE IF NOT EXISTS achievements (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            volunteerId INTEGER NOT NULL,
-            content TEXT NOT NULL,
-            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-        )`);
-
-        await db.execute(`CREATE TABLE IF NOT EXISTS general_notes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            volunteerId INTEGER NOT NULL,
-            content TEXT NOT NULL,
-            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-        )`);
+        await db.batch([
+            `CREATE TABLE IF NOT EXISTS volunteers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                fullName TEXT NOT NULL,
+                studentId TEXT NOT NULL UNIQUE,
+                isApproved INTEGER DEFAULT 0,
+                createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+            )`,
+            `CREATE TABLE IF NOT EXISTS activities (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                volunteerId INTEGER NOT NULL,
+                jobContent TEXT NOT NULL,
+                date TEXT NOT NULL,
+                createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+            )`,
+            `CREATE TABLE IF NOT EXISTS campaigns (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                volunteerId INTEGER NOT NULL,
+                campaignName TEXT NOT NULL,
+                createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+            )`,
+            `CREATE TABLE IF NOT EXISTS violations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                volunteerId INTEGER NOT NULL,
+                error TEXT NOT NULL,
+                date TEXT NOT NULL,
+                createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+            )`,
+            `CREATE TABLE IF NOT EXISTS achievements (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                volunteerId INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+            )`,
+            `CREATE TABLE IF NOT EXISTS general_notes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                volunteerId INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+            )`
+        ], "write");
 
         console.log("✅ Đã kết nối & khởi tạo bảng thành công trên Turso Cloud Database.");
     } catch (e) {
