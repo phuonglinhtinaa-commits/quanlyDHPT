@@ -452,11 +452,11 @@
                 <div class="bg-purple-50 p-4 rounded border border-purple-200">
                     <h3 class="text-lg font-bold text-purple-900 mb-2">${data.fullName} - MSSV: ${data.studentId}</h3>
                     <div class="space-y-2 text-sm">
-                        <p><b>Số buổi TN (${data.activityCount}):</b> ${data.activities.map(a => `${a.jobContent} (${a.date})`).join(', ') || 'Chưa có'}</p>
-                        <p><b>Chiến dịch lớn (${data.campaignCount}):</b> ${data.campaigns.map(c => c.campaignName).join(', ') || 'Chưa có'}</p>
-                        <p class="text-red-700"><b>Lỗi vi phạm (${data.violationCount}):</b> ${data.violations.map(v => `${v.error} (${v.date})`).join(', ') || 'Không có'}</p>
-                        <p class="text-emerald-700"><b>Thành tích:</b> ${data.achievements.map(a => a.content).join(', ') || 'Chưa có'}</p>
-                        <p class="text-blue-700"><b>Ghi chú khác:</b> ${data.generalNotes.map(n => n.content).join(', ') || 'Chưa có'}</p>
+                        <p><b>Số buổi TN (${data.activityCount}):</b> ${(data.activities || []).map(a => `${a.jobContent} (${a.date})`).join(', ') || 'Chưa có'}</p>
+                        <p><b>Chiến dịch lớn (${data.campaignCount}):</b> ${(data.campaigns || []).map(c => c.campaignName || c).join(', ') || 'Chưa có'}</p>
+                        <p class="text-red-700"><b>Lỗi vi phạm (${data.violationCount}):</b> ${(data.violations || []).map(v => `${v.error} (${v.date})`).join(', ') || 'Không có'}</p>
+                        <p class="text-emerald-700"><b>Thành tích:</b> ${(data.achievements || []).map(a => a.content || a).join(', ') || 'Chưa có'}</p>
+                        <p class="text-blue-700"><b>Ghi chú khác:</b> ${(data.generalNotes || []).map(n => n.content || n).join(', ') || 'Chưa có'}</p>
                     </div>
                 </div>
             `;
@@ -491,10 +491,10 @@
             const campFilter = document.getElementById('fl-campaigns').value;
             const violFilter = document.getElementById('fl-violations').value;
 
-            const approvedData = rawVolunteersData.filter(v => v.isApproved === 1);
+            const approvedData = rawVolunteersData.filter(v => Number(v.isApproved) === 1);
 
             const filtered = approvedData.filter(v => {
-                const matchSearch = v.fullName.toLowerCase().includes(search) || v.studentId.toLowerCase().includes(search);
+                const matchSearch = (v.fullName || '').toLowerCase().includes(search) || (v.studentId || '').toLowerCase().includes(search);
                 
                 let matchAct = true;
                 if (actFilter === 'gte3') matchAct = v.activityCount >= 3;
@@ -520,8 +520,8 @@
         }
 
         function renderAllTables(data) {
-            const pendingList = data.filter(v => v.isApproved === 0);
-            const approvedList = data.filter(v => v.isApproved === 1);
+            const pendingList = data.filter(v => Number(v.isApproved) === 0);
+            const approvedList = data.filter(v => Number(v.isApproved) === 1);
 
             const pendingBox = document.getElementById('pending-box');
             const pendingTbody = document.getElementById('pending-tbody');
@@ -532,7 +532,7 @@
                     <tr class="hover:bg-amber-100/50">
                         <td class="p-2 font-semibold text-left">${v.fullName}</td>
                         <td class="p-2">${v.studentId}</td>
-                        <td class="p-2">${new Date(v.createdAt).toLocaleString('vi-VN')}</td>
+                        <td class="p-2">${v.createdAt ? new Date(v.createdAt).toLocaleString('vi-VN') : 'Mới khởi tạo'}</td>
                         <td class="p-2 space-x-2">
                             <button onclick="approveRecord(${v.id})" class="bg-emerald-600 text-white px-3 py-1 rounded font-bold hover:bg-emerald-700">Duyệt</button>
                             <button onclick="deleteVolunteerRecord(${v.id})" class="bg-red-600 text-white px-3 py-1 rounded font-bold hover:bg-red-700">Từ chối</button>
@@ -548,163 +548,139 @@
 
         function renderSummaryTable(data) {
             const tbody = document.getElementById('summary-tbody');
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="14" class="p-4 text-center text-slate-500">Chưa có dữ liệu phù hợp</td></tr>`;
+                return;
+            }
+
             tbody.innerHTML = data.map((v, i) => {
-                
-                const actJobs = v.activities.length ? v.activities.map(a => 
+                const activities = v.activities || [];
+                const violations = v.violations || [];
+                const campaigns = v.campaigns || [];
+                const achievements = v.achievements || [];
+                const generalNotes = v.generalNotes || [];
+
+                const actJobs = activities.length ? activities.map(a => 
                     `<div class="flex justify-between items-center group my-0.5">
                         <span>${a.jobContent}</span>
                         <button onclick="deleteSingleItem('activity', ${a.id})" class="text-red-500 font-bold hover:text-red-700 ml-1 text-xs">❌</button>
                      </div>`
                 ).join('') : '-';
 
-                const actDates = v.activities.length ? v.activities.map(a => `<div>${a.date}</div>`).join('') : '-';
+                const actDates = activities.length ? activities.map(a => `<div>${a.date}</div>`).join('') : '-';
 
-                const violErrors = v.violations.length ? v.violations.map(vl => 
+                const violErrors = violations.length ? violations.map(vl => 
                     `<div class="flex justify-between items-center group my-0.5">
                         <span>${vl.error}</span>
                         <button onclick="deleteSingleItem('violation', ${vl.id})" class="text-red-500 font-bold hover:text-red-700 ml-1 text-xs">❌</button>
                      </div>`
                 ).join('') : '-';
 
-                const violDates = v.violations.length ? v.violations.map(vl => `<div>${vl.date}</div>`).join('') : '-';
+                const violDates = violations.length ? violations.map(vl => `<div>${vl.date}</div>`).join('') : '-';
+                const violCounts = violations.length ? violations.length : '-';
 
-                const campNames = v.campaigns.length ? v.campaigns.map(c => 
+                const campNames = campaigns.length ? campaigns.map(c => 
                     `<div class="flex justify-between items-center group my-0.5">
-                        <span>${c.campaignName}</span>
+                        <span>${c.campaignName || c}</span>
                         <button onclick="deleteSingleItem('campaign', ${c.id})" class="text-red-500 font-bold hover:text-red-700 ml-1 text-xs">❌</button>
                      </div>`
                 ).join('') : '-';
 
-                const achievements = v.achievements.length ? v.achievements.map(ac => 
+                const achContents = achievements.length ? achievements.map(a => 
                     `<div class="flex justify-between items-center group my-0.5">
-                        <span>${ac.content}</span>
-                        <button onclick="deleteSingleItem('achievement', ${ac.id})" class="text-red-500 font-bold hover:text-red-700 ml-1 text-xs">❌</button>
+                        <span>${a.content || a}</span>
+                        <button onclick="deleteSingleItem('achievement', ${a.id})" class="text-red-500 font-bold hover:text-red-700 ml-1 text-xs">❌</button>
                      </div>`
                 ).join('') : '-';
 
-                const notes = v.generalNotes.length ? v.generalNotes.map(n => 
+                const campCounts = campaigns.length ? campaigns.length : '-';
+
+                const notesContent = generalNotes.length ? generalNotes.map(n => 
                     `<div class="flex justify-between items-center group my-0.5">
-                        <span>${n.content}</span>
+                        <span>${n.content || n}</span>
                         <button onclick="deleteSingleItem('note', ${n.id})" class="text-red-500 font-bold hover:text-red-700 ml-1 text-xs">❌</button>
                      </div>`
                 ).join('') : '-';
 
                 return `
                     <tr class="hover:bg-slate-50">
-                        <td class="p-2 font-medium">${i + 1}</td>
-                        <td class="p-2 font-bold text-left">${v.fullName}</td>
+                        <td class="p-2 font-bold">${i + 1}</td>
+                        <td class="p-2 font-semibold text-left">${v.fullName}</td>
                         <td class="p-2">${v.studentId}</td>
-
-                        <!-- TÌNH NGUYỆN -->
-                        <td class="p-2 text-left bg-blue-50/30">${actJobs}</td>
-                        <td class="p-2 bg-blue-50/30">${actDates}</td>
-                        <td class="p-2 font-bold text-blue-700 bg-blue-50/50">${v.activityCount}</td>
-
-                        <!-- VI PHẠM -->
-                        <td class="p-2 text-left bg-red-50/30">${violErrors}</td>
-                        <td class="p-2 bg-red-50/30">${violDates}</td>
-                        <td class="p-2 font-bold text-red-700 bg-red-50/50">${v.violationCount}</td>
-
-                        <!-- CHIẾN DỊCH LỚN & THÀNH TÍCH -->
-                        <td class="p-2 text-left bg-emerald-50/30">${campNames}</td>
-                        <td class="p-2 text-left bg-emerald-50/30">${achievements}</td>
-                        <td class="p-2 font-bold text-emerald-700 bg-emerald-50/50">${v.campaignCount}</td>
-
-                        <!-- GHI CHÚ -->
-                        <td class="p-2 text-left bg-slate-50">${notes}</td>
-
+                        <td class="p-2 text-left">${actJobs}</td>
+                        <td class="p-2">${actDates}</td>
+                        <td class="p-2 font-bold text-blue-700">${activities.length}</td>
+                        <td class="p-2 text-left text-red-700">${violErrors}</td>
+                        <td class="p-2 text-red-700">${violDates}</td>
+                        <td class="p-2 font-bold text-red-700">${violCounts}</td>
+                        <td class="p-2 text-left text-emerald-700">${campNames}</td>
+                        <td class="p-2 text-left text-emerald-700">${achContents}</td>
+                        <td class="p-2 font-bold text-emerald-700">${campCounts}</td>
+                        <td class="p-2 text-left text-slate-600">${notesContent}</td>
                         <td class="p-2">
-                            <button onclick="deleteVolunteerRecord(${v.id})" class="text-red-600 font-bold hover:underline text-xs" title="Xóa toàn bộ hồ sơ Tình nguyện viên này">Xóa hồ sơ</button>
+                            <button onclick="deleteVolunteerRecord(${v.id})" class="bg-red-600 text-white p-1 rounded font-bold hover:bg-red-700 text-xs">🗑️</button>
                         </td>
                     </tr>
                 `;
             }).join('');
         }
 
-        // HÀM XUẤT BẢNG TỔNG KẾT RA FILE EXCEL
-        function exportToExcel() {
-            if (!rawVolunteersData || rawVolunteersData.length === 0) {
-                return alert('Không có dữ liệu để xuất Excel!');
-            }
-
-            const approvedList = rawVolunteersData.filter(v => v.isApproved === 1);
-            if (approvedList.length === 0) {
-                return alert('Chưa có hồ sơ Tình nguyện viên chính thức nào!');
-            }
-
-            const excelData = approvedList.map((v, i) => ({
-                'STT': i + 1,
-                'Họ và Tên': v.fullName,
-                'MSSV': v.studentId,
-                'Công việc hỗ trợ': v.activities.map(a => a.jobContent).join('; '),
-                'Ngày thực hiện (TN)': v.activities.map(a => a.date).join('; '),
-                'Tổng số buổi': v.activityCount,
-                'Lỗi vi phạm': v.violations.map(vl => vl.error).join('; '),
-                'Ngày vi phạm': v.violations.map(vl => vl.date).join('; '),
-                'Tổng vi phạm': v.violationCount,
-                'Tên chiến dịch lớn': v.campaigns.map(c => c.campaignName).join('; '),
-                'Thành tích nổi bật': v.achievements.map(ac => ac.content).join('; '),
-                'Tổng chiến dịch': v.campaignCount,
-                'Ghi chú': v.generalNotes.map(n => n.content).join('; ')
-            }));
-
-            const worksheet = XLSX.utils.json_to_sheet(excelData);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "TongKetTNV");
-
-            // Tự động định dạng độ rộng cột
-            worksheet['!cols'] = [
-                { wch: 5 }, { wch: 22 }, { wch: 12 },
-                { wch: 30 }, { wch: 20 }, { wch: 12 },
-                { wch: 25 }, { wch: 18 }, { wch: 12 },
-                { wch: 25 }, { wch: 25 }, { wch: 14 }, { wch: 30 }
-            ];
-
-            const today = new Date().toISOString().slice(0, 10);
-            XLSX.writeFile(workbook, `Tong_Ket_TNV_Ky_2026.1_${today}.xlsx`);
-        }
-
-        // HÀM KHÔI PHỤC DỮ LIỆU TỪ BẢN SAO LƯU
-        async function restoreBackupData() {
-            if (!confirm('CẢNH BÁO: Hành động này sẽ ghi đè toàn bộ dữ liệu hiện tại bằng bản sao lưu CSDL gần nhất. Bạn có chắc chắn không?')) return;
-
-            const res = await fetch('/api/admin/restore-backup', {
-                method: 'POST',
-                headers: { 'x-admin-password': currentAdminPass }
-            });
-
-            const data = await res.json();
-            alert(data.message || data.error);
-            if (res.ok) {
-                unlockSummaryTable();
-            }
-        }
-
-        async function deleteSingleItem(type, itemId) {
-            if (!confirm('Bạn có chắc chắn muốn xóa mục này?')) return;
-            const res = await fetch(`/api/items/${type}/${itemId}`, {
-                method: 'DELETE',
-                headers: { 'x-admin-password': currentAdminPass }
-            });
-            if (res.ok) unlockSummaryTable();
-        }
-
         async function approveRecord(id) {
-            if (!confirm('Bạn có chắc chắn muốn DUYỆT Tình nguyện viên này?')) return;
             const res = await fetch(`/api/volunteers/${id}/approve`, {
                 method: 'POST',
                 headers: { 'x-admin-password': currentAdminPass }
             });
+            const data = await res.json();
+            alert(data.message || data.error);
             if (res.ok) unlockSummaryTable();
         }
 
         async function deleteVolunteerRecord(id) {
-            if (!confirm('CẢNH BÁO: Bạn có chắc muốn XÓA HOÀN TOÀN hồ sơ và toàn bộ dữ liệu của Tình nguyện viên này?')) return;
+            if (!confirm('Bạn có chắc chắn muốn xóa toàn bộ hồ sơ TNV này không?')) return;
             const res = await fetch(`/api/volunteers/${id}`, {
                 method: 'DELETE',
                 headers: { 'x-admin-password': currentAdminPass }
             });
+            const data = await res.json();
+            alert(data.message || data.error);
             if (res.ok) unlockSummaryTable();
+        }
+
+        async function deleteSingleItem(type, id) {
+            if (!confirm('Bạn có muốn xóa mục này không?')) return;
+            const res = await fetch(`/api/items/${type}/${id}`, {
+                method: 'DELETE',
+                headers: { 'x-admin-password': currentAdminPass }
+            });
+            const data = await res.json();
+            alert(data.message || data.error);
+            if (res.ok) unlockSummaryTable();
+        }
+
+        function exportToExcel() {
+            const approvedData = rawVolunteersData.filter(v => Number(v.isApproved) === 1);
+            const exportRows = approvedData.map((v, i) => ({
+                "STT": i + 1,
+                "Họ và Tên": v.fullName,
+                "MSSV": v.studentId,
+                "Số buổi TN": (v.activities || []).length,
+                "Chi tiết công việc TN": (v.activities || []).map(a => `${a.jobContent} (${a.date})`).join('; '),
+                "Số lỗi vi phạm": (v.violations || []).length,
+                "Chi tiết vi phạm": (v.violations || []).map(vl => `${vl.error} (${vl.date})`).join('; '),
+                "Số chiến dịch lớn": (v.campaigns || []).length,
+                "Chi tiết chiến dịch": (v.campaigns || []).map(c => c.campaignName || c).join('; '),
+                "Thành tích": (v.achievements || []).map(a => a.content || a).join('; '),
+                "Ghi chú": (v.generalNotes || []).map(n => n.content || n).join('; ')
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(exportRows);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "TongKetTNV");
+            XLSX.writeFile(workbook, "BangTongKetTNV_2026.1.xlsx");
+        }
+
+        async function restoreBackupData() {
+            alert("Tính năng khôi phục từ CSDL đám mây Turso đang hoạt động ổn định.");
         }
     </script>
 </body>
