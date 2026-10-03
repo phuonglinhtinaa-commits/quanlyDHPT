@@ -52,7 +52,6 @@ async function tursoQuery(sql, args = []) {
     const rows = result.rows.map(row => {
         let obj = {};
         row.forEach((cell, idx) => {
-            // Chuẩn hóa giá trị trả về, nếu là null thì để chuỗi rỗng hoặc 0
             if (!cell || cell.type === 'null') {
                 obj[cols[idx]] = null;
             } else {
@@ -69,9 +68,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Middleware kiểm tra mật khẩu Admin linh hoạt
 function verifyAdmin(req, res, next) {
-    const adminPassword = req.headers['x-admin-password'];
-    if (!adminPassword || adminPassword.trim().toUpperCase() !== ADMIN_PASSWORD.toUpperCase()) {
+    const adminPassword = req.headers['x-admin-password'] || req.query.adminPassword;
+    if (!adminPassword || adminPassword.toString().trim().toUpperCase() !== ADMIN_PASSWORD.toUpperCase()) {
         return res.status(401).json({ error: 'Mật khẩu quản trị không chính xác!' });
     }
     next();
@@ -142,7 +142,7 @@ app.post('/api/volunteers/activity', async (req, res) => {
         const volunteer = await findVolunteer(fullName, studentId);
         if (!volunteer) return res.status(404).json({ error: 'Không tìm thấy TNV trong hệ thống!' });
 
-        await tursoQuery(`INSERT INTO activities (volunteerId, jobContent, date) VALUES (?, ?, ?)`, [volunteer.id, jobContent.trim(), date]);
+        await tursoQuery(`INSERT INTO activities (volunteerId, jobContent, date) VALUES (?, ?, ?)`, [Number(volunteer.id), jobContent.trim(), date]);
         res.json({ message: 'Thêm buổi tình nguyện thành công!' });
     } catch (e) {
         res.status(500).json({ error: 'Lỗi cập nhật buổi tình nguyện!' });
@@ -155,7 +155,7 @@ app.post('/api/volunteers/campaign', async (req, res) => {
         const volunteer = await findVolunteer(fullName, studentId);
         if (!volunteer) return res.status(404).json({ error: 'Không tìm thấy TNV trong hệ thống!' });
 
-        await tursoQuery(`INSERT INTO campaigns (volunteerId, campaignName) VALUES (?, ?)`, [volunteer.id, campaignName.trim()]);
+        await tursoQuery(`INSERT INTO campaigns (volunteerId, campaignName) VALUES (?, ?)`, [Number(volunteer.id), campaignName.trim()]);
         res.json({ message: 'Ghi nhận chiến dịch thành công!' });
     } catch (e) {
         res.status(500).json({ error: 'Lỗi ghi nhận chiến dịch!' });
@@ -168,14 +168,15 @@ app.post('/api/volunteers/additional-info', verifyAdmin, async (req, res) => {
         const volunteer = await findVolunteer(fullName, studentId);
         if (!volunteer) return res.status(404).json({ error: 'Không tìm thấy TNV trong hệ thống!' });
 
+        const vId = Number(volunteer.id);
         if (category === 'violation') {
-            await tursoQuery(`INSERT INTO violations (volunteerId, error, date) VALUES (?, ?, ?)`, [volunteer.id, violationError.trim(), violationDate]);
+            await tursoQuery(`INSERT INTO violations (volunteerId, error, date) VALUES (?, ?, ?)`, [vId, violationError.trim(), violationDate]);
             return res.json({ message: 'Cập nhật vi phạm thành công!' });
         } else if (category === 'achievement') {
-            await tursoQuery(`INSERT INTO achievements (volunteerId, content) VALUES (?, ?)`, [volunteer.id, achievementContent.trim()]);
+            await tursoQuery(`INSERT INTO achievements (volunteerId, content) VALUES (?, ?)`, [vId, achievementContent.trim()]);
             return res.json({ message: 'Cập nhật thành tích thành công!' });
         } else if (category === 'note') {
-            await tursoQuery(`INSERT INTO general_notes (volunteerId, content) VALUES (?, ?)`, [volunteer.id, noteContent.trim()]);
+            await tursoQuery(`INSERT INTO general_notes (volunteerId, content) VALUES (?, ?)`, [vId, noteContent.trim()]);
             return res.json({ message: 'Cập nhật ghi chú thành công!' });
         }
     } catch (e) {
@@ -189,7 +190,7 @@ app.post('/api/volunteers/my-profile', async (req, res) => {
         const volunteer = await findVolunteer(fullName, studentId);
         if (!volunteer) return res.status(404).json({ error: 'Không tìm thấy dữ liệu!' });
 
-        const vId = volunteer.id;
+        const vId = Number(volunteer.id);
         const acts = await tursoQuery(`SELECT id, jobContent, date FROM activities WHERE volunteerId = ?`, [vId]);
         const camps = await tursoQuery(`SELECT id, campaignName FROM campaigns WHERE volunteerId = ?`, [vId]);
         const viols = await tursoQuery(`SELECT id, error, date FROM violations WHERE volunteerId = ?`, [vId]);
@@ -214,12 +215,13 @@ app.post('/api/volunteers/my-profile', async (req, res) => {
     }
 });
 
+// Bảng tổng kết Admin
 app.get('/api/volunteers', verifyAdmin, async (req, res) => {
     try {
         const volunteers = await tursoQuery(`SELECT * FROM volunteers ORDER BY id DESC`);
 
         const result = await Promise.all(volunteers.rows.map(async (v) => {
-            const vId = v.id;
+            const vId = Number(v.id);
             const acts = await tursoQuery(`SELECT id, jobContent, date FROM activities WHERE volunteerId = ?`, [vId]);
             const camps = await tursoQuery(`SELECT id, campaignName FROM campaigns WHERE volunteerId = ?`, [vId]);
             const viols = await tursoQuery(`SELECT id, error, date FROM violations WHERE volunteerId = ?`, [vId]);
@@ -227,7 +229,9 @@ app.get('/api/volunteers', verifyAdmin, async (req, res) => {
             const notes = await tursoQuery(`SELECT id, content FROM general_notes WHERE volunteerId = ?`, [vId]);
 
             return {
-                ...v,
+                id: vId,
+                fullName: v.fullName,
+                studentId: v.studentId,
                 isApproved: Number(v.isApproved || 0),
                 activities: acts.rows || [],
                 activityCount: (acts.rows || []).length,
@@ -242,13 +246,14 @@ app.get('/api/volunteers', verifyAdmin, async (req, res) => {
 
         res.json(result);
     } catch (e) {
+        console.error("Lỗi bảng tổng kết:", e);
         res.status(500).json({ error: 'Lỗi tải dữ liệu bảng tổng kết: ' + e.message });
     }
 });
 
 app.post('/api/volunteers/:id/approve', verifyAdmin, async (req, res) => {
     try {
-        await tursoQuery(`UPDATE volunteers SET isApproved = 1 WHERE id = ?`, [req.params.id]);
+        await tursoQuery(`UPDATE volunteers SET isApproved = 1 WHERE id = ?`, [Number(req.params.id)]);
         res.json({ message: 'Đã duyệt!' });
     } catch (e) {
         res.status(500).json({ error: 'Lỗi duyệt!' });
@@ -257,7 +262,13 @@ app.post('/api/volunteers/:id/approve', verifyAdmin, async (req, res) => {
 
 app.delete('/api/volunteers/:id', verifyAdmin, async (req, res) => {
     try {
-        await tursoQuery(`DELETE FROM volunteers WHERE id = ?`, [req.params.id]);
+        const vId = Number(req.params.id);
+        await tursoQuery(`DELETE FROM volunteers WHERE id = ?`, [vId]);
+        await tursoQuery(`DELETE FROM activities WHERE volunteerId = ?`, [vId]);
+        await tursoQuery(`DELETE FROM campaigns WHERE volunteerId = ?`, [vId]);
+        await tursoQuery(`DELETE FROM violations WHERE volunteerId = ?`, [vId]);
+        await tursoQuery(`DELETE FROM achievements WHERE volunteerId = ?`, [vId]);
+        await tursoQuery(`DELETE FROM general_notes WHERE volunteerId = ?`, [vId]);
         res.json({ message: 'Đã xóa hồ sơ!' });
     } catch (e) {
         res.status(500).json({ error: 'Lỗi xóa!' });
@@ -266,7 +277,7 @@ app.delete('/api/volunteers/:id', verifyAdmin, async (req, res) => {
 
 app.delete('/api/items/activity/:id', verifyAdmin, async (req, res) => {
     try {
-        await tursoQuery(`DELETE FROM activities WHERE id = ?`, [req.params.id]);
+        await tursoQuery(`DELETE FROM activities WHERE id = ?`, [Number(req.params.id)]);
         res.json({ message: 'Đã xóa!' });
     } catch (e) {
         res.status(500).json({ error: 'Lỗi xóa!' });
@@ -275,7 +286,7 @@ app.delete('/api/items/activity/:id', verifyAdmin, async (req, res) => {
 
 app.delete('/api/items/violation/:id', verifyAdmin, async (req, res) => {
     try {
-        await tursoQuery(`DELETE FROM violations WHERE id = ?`, [req.params.id]);
+        await tursoQuery(`DELETE FROM violations WHERE id = ?`, [Number(req.params.id)]);
         res.json({ message: 'Đã xóa!' });
     } catch (e) {
         res.status(500).json({ error: 'Lỗi xóa!' });
@@ -284,7 +295,7 @@ app.delete('/api/items/violation/:id', verifyAdmin, async (req, res) => {
 
 app.delete('/api/items/campaign/:id', verifyAdmin, async (req, res) => {
     try {
-        await tursoQuery(`DELETE FROM campaigns WHERE id = ?`, [req.params.id]);
+        await tursoQuery(`DELETE FROM campaigns WHERE id = ?`, [Number(req.params.id)]);
         res.json({ message: 'Đã xóa!' });
     } catch (e) {
         res.status(500).json({ error: 'Lỗi xóa!' });
@@ -293,7 +304,7 @@ app.delete('/api/items/campaign/:id', verifyAdmin, async (req, res) => {
 
 app.delete('/api/items/achievement/:id', verifyAdmin, async (req, res) => {
     try {
-        await tursoQuery(`DELETE FROM achievements WHERE id = ?`, [req.params.id]);
+        await tursoQuery(`DELETE FROM achievements WHERE id = ?`, [Number(req.params.id)]);
         res.json({ message: 'Đã xóa!' });
     } catch (e) {
         res.status(500).json({ error: 'Lỗi xóa!' });
@@ -302,7 +313,7 @@ app.delete('/api/items/achievement/:id', verifyAdmin, async (req, res) => {
 
 app.delete('/api/items/note/:id', verifyAdmin, async (req, res) => {
     try {
-        await tursoQuery(`DELETE FROM general_notes WHERE id = ?`, [req.params.id]);
+        await tursoQuery(`DELETE FROM general_notes WHERE id = ?`, [Number(req.params.id)]);
         res.json({ message: 'Đã xóa!' });
     } catch (e) {
         res.status(500).json({ error: 'Lỗi xóa!' });
