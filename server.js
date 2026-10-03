@@ -13,6 +13,16 @@ if (rawUrl.startsWith('libsql://')) {
 const TURSO_URL = rawUrl;
 const TURSO_TOKEN = (process.env.TURSO_AUTH_TOKEN || '').trim();
 
+// Hàm xử lý bóc tách ô dữ liệu từ Turso Pipeline API
+function extractCellValue(cell) {
+    if (cell === null || cell === undefined) return null;
+    if (typeof cell === 'object') {
+        if (cell.type === 'null') return null;
+        if (cell.value !== undefined) return cell.value;
+    }
+    return cell;
+}
+
 async function tursoQuery(sql, args = []) {
     const formattedArgs = args.map(val => {
         if (val === null || val === undefined) return { type: 'null' };
@@ -38,6 +48,7 @@ async function tursoQuery(sql, args = []) {
     });
 
     const data = await response.json();
+    
     if (!response.ok || data.batched_results?.[0]?.type === 'error') {
         const errMsg = data.batched_results?.[0]?.error?.message || JSON.stringify(data);
         throw new Error(errMsg);
@@ -52,14 +63,11 @@ async function tursoQuery(sql, args = []) {
     const rows = result.rows.map(row => {
         let obj = {};
         row.forEach((cell, idx) => {
-            if (!cell || cell.type === 'null') {
-                obj[cols[idx]] = null;
-            } else {
-                obj[cols[idx]] = cell.value !== undefined ? cell.value : null;
-            }
+            obj[cols[idx]] = extractCellValue(cell);
         });
         return obj;
     });
+
     return { rows };
 }
 
@@ -68,7 +76,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Middleware xác thực Admin
 function verifyAdmin(req, res, next) {
     const adminPassword = req.headers['x-admin-password'];
     if (!adminPassword || adminPassword.toString().trim().toUpperCase() !== ADMIN_PASSWORD.toUpperCase()) {
@@ -96,9 +103,9 @@ async function initDatabase() {
         for (const sql of tables) {
             await tursoQuery(sql);
         }
-        console.log("✅ Khởi tạo và kết nối Turso HTTP thành công!");
+        console.log("✅ Khởi tạo CSDL thành công!");
     } catch (e) {
-        console.error("❌ Lỗi khởi tạo Turso HTTP:", e.message);
+        console.error("❌ Lỗi CSDL:", e.message);
     }
 }
 initDatabase();
@@ -117,7 +124,6 @@ async function findVolunteer(fullName, studentId) {
 
 // --- API ROUTES ---
 
-// 0. Đăng ký khởi tạo
 app.post('/api/volunteers/register', async (req, res) => {
     const { fullName, studentId } = req.body;
     if (!fullName || !studentId) return res.status(400).json({ error: 'Vui lòng nhập đủ Họ tên và MSSV!' });
@@ -137,7 +143,6 @@ app.post('/api/volunteers/register', async (req, res) => {
     }
 });
 
-// 1. Buổi tình nguyện
 app.post('/api/volunteers/activity', async (req, res) => {
     const { fullName, studentId, jobContent, date } = req.body;
     try {
@@ -151,7 +156,6 @@ app.post('/api/volunteers/activity', async (req, res) => {
     }
 });
 
-// 2. Chiến dịch lớn
 app.post('/api/volunteers/campaign', async (req, res) => {
     const { fullName, studentId, campaignName } = req.body;
     try {
@@ -165,7 +169,6 @@ app.post('/api/volunteers/campaign', async (req, res) => {
     }
 });
 
-// 3. Thông tin bổ sung (Admin)
 app.post('/api/volunteers/additional-info', verifyAdmin, async (req, res) => {
     const { fullName, studentId, category, violationError, violationDate, achievementContent, noteContent } = req.body;
     try {
@@ -188,7 +191,6 @@ app.post('/api/volunteers/additional-info', verifyAdmin, async (req, res) => {
     }
 });
 
-// 4. Tra cứu cá nhân
 app.post('/api/volunteers/my-profile', async (req, res) => {
     const { fullName, studentId } = req.body;
     try {
@@ -220,7 +222,7 @@ app.post('/api/volunteers/my-profile', async (req, res) => {
     }
 });
 
-// 5. Bảng tổng kết Admin (Khớp hoàn toàn với hàm renderSummaryTable trong index.html)
+// Bảng tổng kết Admin
 app.get('/api/volunteers', verifyAdmin, async (req, res) => {
     try {
         const volunteers = await tursoQuery(`SELECT * FROM volunteers ORDER BY id DESC`);
@@ -257,7 +259,6 @@ app.get('/api/volunteers', verifyAdmin, async (req, res) => {
     }
 });
 
-// Duyệt & Xóa hồ sơ
 app.post('/api/volunteers/:id/approve', verifyAdmin, async (req, res) => {
     try {
         await tursoQuery(`UPDATE volunteers SET isApproved = 1 WHERE id = ?`, [Number(req.params.id)]);
@@ -282,7 +283,6 @@ app.delete('/api/volunteers/:id', verifyAdmin, async (req, res) => {
     }
 });
 
-// Xóa lẻ từng mục con
 app.delete('/api/items/activity/:id', verifyAdmin, async (req, res) => {
     try {
         await tursoQuery(`DELETE FROM activities WHERE id = ?`, [Number(req.params.id)]);
