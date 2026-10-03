@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quản lý Tình nguyện viên - Kỳ 2026.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Thư viện Xuất File Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         table th, table td {
@@ -26,7 +25,6 @@
 
     <main class="container mx-auto px-4 mt-6">
         
-        <!-- THANH CHUYỂN TAB -->
         <div class="flex flex-wrap gap-2 border-b border-slate-300 pb-3 mb-6">
             <button onclick="showTab('init')" id="btn-init" class="tab-btn px-4 py-2 bg-blue-700 text-white rounded font-medium shadow">0. Khởi tạo TNV mới</button>
             <button onclick="showTab('form1')" id="btn-form1" class="tab-btn px-4 py-2 bg-white text-slate-700 rounded font-medium border hover:bg-slate-50">1. Đội viên điền buổi TN</button>
@@ -42,7 +40,7 @@
                 <h2 class="text-lg font-bold text-blue-800">Khởi tạo Tình nguyện viên mới</h2>
                 <button onclick="copyFormLink('init')" class="text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 px-3 py-1 rounded font-semibold">📋 Sao chép link Form này</button>
             </div>
-            <p class="text-xs text-slate-500 mb-4">* Hồ sơ sau khi tạo sẽ có 0 buổi và cần Admin duyệt. Trong vòng 24 giờ nếu không duyệt sẽ bị tự động xóa.</p>
+            <p class="text-xs text-slate-500 mb-4">* Hồ sơ sau khi tạo sẽ có 0 buổi và cần Admin duyệt.</p>
             <form id="init-form" class="space-y-4">
                 <div>
                     <label class="block text-sm font-semibold mb-1">Họ và Tên (*)</label>
@@ -180,7 +178,7 @@
             <div id="lookup-result" class="hidden border-t pt-4"></div>
         </div>
 
-        <!-- TAB 5: BẢNG TỔNG KẾT VỚI NÚT XUẤT EXCEL VÀ KHÔI PHỤC DỮ LIỆU -->
+        <!-- TAB 5 -->
         <div id="tab-summary" class="tab-content hidden bg-white p-6 rounded shadow">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
                 <h2 class="text-lg font-bold text-slate-800">Bảng tổng kết quá trình hoạt động</h2>
@@ -203,7 +201,6 @@
 
             <div id="summary-content" class="hidden space-y-6">
                 
-                <!-- BỘ LỌC -->
                 <div class="bg-slate-50 p-4 border rounded grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
                         <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Tìm Tên / MSSV:</label>
@@ -264,7 +261,6 @@
                     </div>
                 </div>
 
-                <!-- BẢNG TỔNG KẾT ĐA TẦNG CHI TIẾT -->
                 <div>
                     <h3 class="font-bold text-slate-700 text-sm mb-2 uppercase">✅ Bảng tổng kết chi tiết Tình nguyện viên (Bấm ❌ để xóa mục lẻ)</h3>
                     <div class="overflow-x-auto">
@@ -486,32 +482,32 @@
         }
 
         function applyExcelFilters() {
-            const search = document.getElementById('fl-search').value.toLowerCase();
+            const search = (document.getElementById('fl-search').value || '').toLowerCase().trim();
             const actFilter = document.getElementById('fl-activities').value;
             const campFilter = document.getElementById('fl-campaigns').value;
             const violFilter = document.getElementById('fl-violations').value;
 
-            const approvedData = rawVolunteersData.filter(v => Number(v.isApproved) === 1);
+            const approvedData = rawVolunteersData.filter(v => Number(v.isApproved) === 1 || v.isApproved === '1');
 
             const filtered = approvedData.filter(v => {
                 const matchSearch = (v.fullName || '').toLowerCase().includes(search) || (v.studentId || '').toLowerCase().includes(search);
                 
                 let matchAct = true;
-                if (actFilter === 'gte3') matchAct = v.activityCount >= 3;
+                if (actFilter === 'gte3') matchAct = (v.activityCount || 0) >= 3;
                 else if (actFilter.startsWith('eq')) {
                     const num = parseInt(actFilter.replace('eq', ''));
-                    matchAct = v.activityCount === num;
+                    matchAct = (v.activityCount || 0) === num;
                 } else if (actFilter === 'gt10') {
-                    matchAct = v.activityCount > 10;
+                    matchAct = (v.activityCount || 0) > 10;
                 }
 
                 let matchCamp = true;
-                if (campFilter === 'gt0') matchCamp = v.campaignCount > 0;
-                else if (campFilter === 'eq0') matchCamp = v.campaignCount === 0;
+                if (campFilter === 'gt0') matchCamp = (v.campaignCount || 0) > 0;
+                else if (campFilter === 'eq0') matchCamp = (v.campaignCount || 0) === 0;
 
                 let matchViol = true;
-                if (violFilter === 'gt0') matchViol = v.violationCount > 0;
-                else if (violFilter === 'eq0') matchViol = v.violationCount === 0;
+                if (violFilter === 'gt0') matchViol = (v.violationCount || 0) > 0;
+                else if (violFilter === 'eq0') matchViol = (v.violationCount || 0) === 0;
 
                 return matchSearch && matchAct && matchCamp && matchViol;
             });
@@ -520,8 +516,10 @@
         }
 
         function renderAllTables(data) {
-            const pendingList = data.filter(v => Number(v.isApproved) === 0);
-            const approvedList = data.filter(v => Number(v.isApproved) === 1);
+            if (!Array.isArray(data)) data = [];
+
+            const pendingList = data.filter(v => Number(v.isApproved) === 0 || v.isApproved === '0');
+            const approvedList = data.filter(v => Number(v.isApproved) === 1 || v.isApproved === '1');
 
             const pendingBox = document.getElementById('pending-box');
             const pendingTbody = document.getElementById('pending-tbody');
@@ -658,7 +656,7 @@
         }
 
         function exportToExcel() {
-            const approvedData = rawVolunteersData.filter(v => Number(v.isApproved) === 1);
+            const approvedData = rawVolunteersData.filter(v => Number(v.isApproved) === 1 || v.isApproved === '1');
             const exportRows = approvedData.map((v, i) => ({
                 "STT": i + 1,
                 "Họ và Tên": v.fullName,
