@@ -34,18 +34,10 @@
 
         <!-- TAB 0 -->
         <div id="tab-init" class="tab-content bg-white p-6 rounded shadow max-w-2xl mx-auto">
-            <div class="flex justify-between items-center border-b pb-2 mb-2">
-                <h2 class="text-lg font-bold text-blue-800">Khởi tạo Tình nguyện viên mới</h2>
-            </div>
+            <h2 class="text-lg font-bold text-blue-800 mb-4">Khởi tạo Tình nguyện viên mới</h2>
             <form id="init-form" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-semibold mb-1">Họ và Tên (*)</label>
-                    <input type="text" id="init-fullName" required class="w-full border p-2 rounded">
-                </div>
-                <div>
-                    <label class="block text-sm font-semibold mb-1">Mã Số Sinh Viên (MSSV) (*)</label>
-                    <input type="text" id="init-studentId" required class="w-full border p-2 rounded">
-                </div>
+                <div><label class="block text-sm font-semibold mb-1">Họ và Tên (*)</label><input type="text" id="init-fullName" required class="w-full border p-2 rounded"></div>
+                <div><label class="block text-sm font-semibold mb-1">Mã Số Sinh Viên (MSSV) (*)</label><input type="text" id="init-studentId" required class="w-full border p-2 rounded"></div>
                 <button type="submit" class="bg-blue-700 text-white font-bold px-6 py-2 rounded hover:bg-blue-800 w-full">Gửi đăng ký khởi tạo</button>
             </form>
         </div>
@@ -129,6 +121,7 @@
             </div>
 
             <div id="summary-content" class="hidden space-y-6">
+                <!-- KHUNG CHỜ DUYỆT (ĐÃ ĐƯỢC ĐẶT RÕ RÀNG Ở ĐÂY) -->
                 <div id="pending-box" class="hidden border border-amber-300 bg-amber-50 p-4 rounded">
                     <h3 class="font-bold text-amber-800 text-sm mb-2 uppercase">⏳ Danh sách hồ sơ mới khởi tạo (Chờ duyệt)</h3>
                     <div class="overflow-x-auto">
