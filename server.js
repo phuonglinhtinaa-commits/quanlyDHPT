@@ -68,9 +68,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Middleware kiểm tra mật khẩu Admin linh hoạt
+// Middleware xác thực Admin
 function verifyAdmin(req, res, next) {
-    const adminPassword = req.headers['x-admin-password'] || req.query.adminPassword;
+    const adminPassword = req.headers['x-admin-password'];
     if (!adminPassword || adminPassword.toString().trim().toUpperCase() !== ADMIN_PASSWORD.toUpperCase()) {
         return res.status(401).json({ error: 'Mật khẩu quản trị không chính xác!' });
     }
@@ -117,6 +117,7 @@ async function findVolunteer(fullName, studentId) {
 
 // --- API ROUTES ---
 
+// 0. Đăng ký khởi tạo
 app.post('/api/volunteers/register', async (req, res) => {
     const { fullName, studentId } = req.body;
     if (!fullName || !studentId) return res.status(400).json({ error: 'Vui lòng nhập đủ Họ tên và MSSV!' });
@@ -136,6 +137,7 @@ app.post('/api/volunteers/register', async (req, res) => {
     }
 });
 
+// 1. Buổi tình nguyện
 app.post('/api/volunteers/activity', async (req, res) => {
     const { fullName, studentId, jobContent, date } = req.body;
     try {
@@ -149,6 +151,7 @@ app.post('/api/volunteers/activity', async (req, res) => {
     }
 });
 
+// 2. Chiến dịch lớn
 app.post('/api/volunteers/campaign', async (req, res) => {
     const { fullName, studentId, campaignName } = req.body;
     try {
@@ -162,6 +165,7 @@ app.post('/api/volunteers/campaign', async (req, res) => {
     }
 });
 
+// 3. Thông tin bổ sung (Admin)
 app.post('/api/volunteers/additional-info', verifyAdmin, async (req, res) => {
     const { fullName, studentId, category, violationError, violationDate, achievementContent, noteContent } = req.body;
     try {
@@ -184,6 +188,7 @@ app.post('/api/volunteers/additional-info', verifyAdmin, async (req, res) => {
     }
 });
 
+// 4. Tra cứu cá nhân
 app.post('/api/volunteers/my-profile', async (req, res) => {
     const { fullName, studentId } = req.body;
     try {
@@ -204,18 +209,18 @@ app.post('/api/volunteers/my-profile', async (req, res) => {
             activityCount: acts.rows.length,
             activities: acts.rows,
             campaignCount: camps.rows.length,
-            campaigns: camps.rows.map(c => c.campaignName),
+            campaigns: camps.rows,
             violationCount: viols.rows.length,
             violations: viols.rows,
-            achievements: achs.rows.map(a => a.content),
-            generalNotes: notes.rows.map(n => n.content)
+            achievements: achs.rows,
+            generalNotes: notes.rows
         });
     } catch (e) {
         res.status(500).json({ error: 'Lỗi tra cứu dữ liệu!' });
     }
 });
 
-// Bảng tổng kết Admin
+// 5. Bảng tổng kết Admin (Khớp hoàn toàn với hàm renderSummaryTable trong index.html)
 app.get('/api/volunteers', verifyAdmin, async (req, res) => {
     try {
         const volunteers = await tursoQuery(`SELECT * FROM volunteers ORDER BY id DESC`);
@@ -233,6 +238,7 @@ app.get('/api/volunteers', verifyAdmin, async (req, res) => {
                 fullName: v.fullName,
                 studentId: v.studentId,
                 isApproved: Number(v.isApproved || 0),
+                createdAt: v.createdAt,
                 activities: acts.rows || [],
                 activityCount: (acts.rows || []).length,
                 campaigns: camps.rows || [],
@@ -251,6 +257,7 @@ app.get('/api/volunteers', verifyAdmin, async (req, res) => {
     }
 });
 
+// Duyệt & Xóa hồ sơ
 app.post('/api/volunteers/:id/approve', verifyAdmin, async (req, res) => {
     try {
         await tursoQuery(`UPDATE volunteers SET isApproved = 1 WHERE id = ?`, [Number(req.params.id)]);
@@ -275,6 +282,7 @@ app.delete('/api/volunteers/:id', verifyAdmin, async (req, res) => {
     }
 });
 
+// Xóa lẻ từng mục con
 app.delete('/api/items/activity/:id', verifyAdmin, async (req, res) => {
     try {
         await tursoQuery(`DELETE FROM activities WHERE id = ?`, [Number(req.params.id)]);
