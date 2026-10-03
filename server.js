@@ -13,7 +13,6 @@ if (rawUrl.startsWith('libsql://')) {
 const TURSO_URL = rawUrl;
 const TURSO_TOKEN = (process.env.TURSO_AUTH_TOKEN || '').trim();
 
-// Hàm trích xuất giá trị thực từ cấu trúc cell của Turso API
 function parseTursoCell(cell) {
     if (cell === null || cell === undefined) return null;
     if (typeof cell === 'object') {
@@ -62,8 +61,7 @@ async function tursoQuery(sql, args = []) {
     const rows = result.rows.map(row => {
         let obj = {};
         row.forEach((cell, idx) => {
-            const rawVal = parseTursoCell(cell);
-            obj[cols[idx]] = rawVal;
+            obj[cols[idx]] = parseTursoCell(cell);
         });
         return obj;
     });
@@ -122,8 +120,7 @@ async function findVolunteer(fullName, studentId) {
     });
 }
 
-// --- API ROUTES ---
-
+// API Routes
 app.post('/api/volunteers/register', async (req, res) => {
     const { fullName, studentId } = req.body;
     if (!fullName || !studentId) return res.status(400).json({ error: 'Vui lòng nhập đủ Họ tên và MSSV!' });
@@ -222,7 +219,6 @@ app.post('/api/volunteers/my-profile', async (req, res) => {
     }
 });
 
-// Bảng tổng kết Admin
 app.get('/api/volunteers', verifyAdmin, async (req, res) => {
     try {
         const volunteers = await tursoQuery(`SELECT * FROM volunteers ORDER BY id DESC`);
