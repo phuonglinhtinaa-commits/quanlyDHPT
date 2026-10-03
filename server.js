@@ -6,7 +6,6 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = 'OPTC140921';
 
-// Lấy URL và Token từ biến môi trường Render
 let rawUrl = (process.env.TURSO_DATABASE_URL || '').trim();
 if (rawUrl.startsWith('libsql://')) {
     rawUrl = rawUrl.replace('libsql://', 'https://');
@@ -15,6 +14,12 @@ const TURSO_URL = rawUrl;
 const TURSO_TOKEN = (process.env.TURSO_AUTH_TOKEN || '').trim();
 
 async function tursoQuery(sql, args = []) {
+    const formattedArgs = args.map(val => {
+        if (val === null || val === undefined) return { type: 'null' };
+        if (typeof val === 'number') return { type: 'integer', value: val.toString() };
+        return { type: 'text', value: val.toString() };
+    });
+
     const response = await fetch(`${TURSO_URL}/v2/pipeline`, {
         method: 'POST',
         headers: {
@@ -25,26 +30,19 @@ async function tursoQuery(sql, args = []) {
             requests: [
                 {
                     type: 'execute',
-                    stmt: { 
-                        sql, 
-                        args: args.map(val => 
-                            val === null ? { type: 'null' } : 
-                            typeof val === 'number' ? { type: 'integer', value: val.toString() } : 
-                            { type: 'text', value: val.toString() }
-                        ) 
-                    }
+                    stmt: { sql, args: formattedArgs }
                 },
                 { type: 'close' }
             ]
         })
     });
-    
+
     const data = await response.json();
     if (!response.ok || data.batched_results?.[0]?.type === 'error') {
-        const errDetails = data.batched_results?.[0]?.error?.message || JSON.stringify(data);
-        throw new Error(errDetails);
+        const errMsg = data.batched_results?.[0]?.error?.message || JSON.stringify(data);
+        throw new Error(errMsg);
     }
-    
+
     const result = data.batched_results?.[0]?.response?.result;
     if (!result || !result.cols || !result.rows) {
         return { rows: [] };
@@ -54,14 +52,18 @@ async function tursoQuery(sql, args = []) {
     const rows = result.rows.map(row => {
         let obj = {};
         row.forEach((cell, idx) => {
-            obj[cols[idx]] = cell.value;
+            // Chuẩn hóa giá trị trả về, nếu là null thì để chuỗi rỗng hoặc 0
+            if (!cell || cell.type === 'null') {
+                obj[cols[idx]] = null;
+            } else {
+                obj[cols[idx]] = cell.value !== undefined ? cell.value : null;
+            }
         });
         return obj;
     });
     return { rows };
 }
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -80,7 +82,6 @@ function normalizeString(str) {
     return str.toString().trim().toLowerCase();
 }
 
-// Khởi tạo bảng qua Turso HTTP API
 async function initDatabase() {
     const tables = [
         `CREATE TABLE IF NOT EXISTS volunteers (id INTEGER PRIMARY KEY AUTOINCREMENT, fullName TEXT NOT NULL, studentId TEXT NOT NULL UNIQUE, isApproved INTEGER DEFAULT 0, createdAt DATETIME DEFAULT CURRENT_TIMESTAMP)`,
@@ -115,18 +116,23 @@ async function findVolunteer(fullName, studentId) {
 }
 
 // --- API ROUTES ---
+
 app.post('/api/volunteers/register', async (req, res) => {
     const { fullName, studentId } = req.body;
     if (!fullName || !studentId) return res.status(400).json({ error: 'Vui lòng nhập đủ Họ tên và MSSV!' });
 
     try {
-        const exist = await tursoQuery(`SELECT * FROM volunteers WHERE LOWER(TRIM(studentId)) = ?`, [studentId.trim().toLowerCase()]);
-        if (exist.rows.length > 0) return res.status(400).json({ error: 'MSSV này đã tồn tại!' });
+        const cleanId = studentId.trim().toLowerCase();
+        const exist = await tursoQuery(`SELECT * FROM volunteers WHERE LOWER(TRIM(studentId)) = ?`, [cleanId]);
+        
+        if (exist.rows && exist.rows.length > 0) {
+            return res.status(400).json({ error: 'MSSV này đã tồn tại!' });
+        }
 
         await tursoQuery(`INSERT INTO volunteers (fullName, studentId, isApproved) VALUES (?, ?, 0)`, [fullName.trim(), studentId.trim()]);
         res.json({ message: 'Đăng ký khởi tạo thành công! Vui lòng chờ Admin duyệt.' });
     } catch (e) {
-        res.status(500).json({ error: 'Lỗi lưu dữ liệu!' });
+        res.status(500).json({ error: 'Lỗi lưu dữ liệu: ' + e.message });
     }
 });
 
@@ -193,7 +199,7 @@ app.post('/api/volunteers/my-profile', async (req, res) => {
         res.json({
             fullName: volunteer.fullName,
             studentId: volunteer.studentId,
-            isApproved: volunteer.isApproved,
+            isApproved: Number(volunteer.isApproved || 0),
             activityCount: acts.rows.length,
             activities: acts.rows,
             campaignCount: camps.rows.length,
@@ -213,65 +219,94 @@ app.get('/api/volunteers', verifyAdmin, async (req, res) => {
         const volunteers = await tursoQuery(`SELECT * FROM volunteers ORDER BY id DESC`);
 
         const result = await Promise.all(volunteers.rows.map(async (v) => {
-            const acts = await tursoQuery(`SELECT id, jobContent, date FROM activities WHERE volunteerId = ?`, [v.id]);
-            const camps = await tursoQuery(`SELECT id, campaignName FROM campaigns WHERE volunteerId = ?`, [v.id]);
-            const viols = await tursoQuery(`SELECT id, error, date FROM violations WHERE volunteerId = ?`, [v.id]);
-            const achs = await tursoQuery(`SELECT id, content FROM achievements WHERE volunteerId = ?`, [v.id]);
-            const notes = await tursoQuery(`SELECT id, content FROM general_notes WHERE volunteerId = ?`, [v.id]);
+            const vId = v.id;
+            const acts = await tursoQuery(`SELECT id, jobContent, date FROM activities WHERE volunteerId = ?`, [vId]);
+            const camps = await tursoQuery(`SELECT id, campaignName FROM campaigns WHERE volunteerId = ?`, [vId]);
+            const viols = await tursoQuery(`SELECT id, error, date FROM violations WHERE volunteerId = ?`, [vId]);
+            const achs = await tursoQuery(`SELECT id, content FROM achievements WHERE volunteerId = ?`, [vId]);
+            const notes = await tursoQuery(`SELECT id, content FROM general_notes WHERE volunteerId = ?`, [vId]);
 
             return {
                 ...v,
-                activities: acts.rows,
-                activityCount: acts.rows.length,
-                campaigns: camps.rows,
-                campaignCount: camps.rows.length,
-                violations: viols.rows,
-                violationCount: viols.rows.length,
-                achievements: achs.rows,
-                generalNotes: notes.rows
+                isApproved: Number(v.isApproved || 0),
+                activities: acts.rows || [],
+                activityCount: (acts.rows || []).length,
+                campaigns: camps.rows || [],
+                campaignCount: (camps.rows || []).length,
+                violations: viols.rows || [],
+                violationCount: (viols.rows || []).length,
+                achievements: achs.rows || [],
+                generalNotes: notes.rows || []
             };
         }));
 
         res.json(result);
     } catch (e) {
-        res.status(500).json({ error: 'Lỗi tải dữ liệu bảng tổng kết!' });
+        res.status(500).json({ error: 'Lỗi tải dữ liệu bảng tổng kết: ' + e.message });
     }
 });
 
 app.post('/api/volunteers/:id/approve', verifyAdmin, async (req, res) => {
-    await tursoQuery(`UPDATE volunteers SET isApproved = 1 WHERE id = ?`, [req.params.id]);
-    res.json({ message: 'Đã duyệt!' });
+    try {
+        await tursoQuery(`UPDATE volunteers SET isApproved = 1 WHERE id = ?`, [req.params.id]);
+        res.json({ message: 'Đã duyệt!' });
+    } catch (e) {
+        res.status(500).json({ error: 'Lỗi duyệt!' });
+    }
 });
 
 app.delete('/api/volunteers/:id', verifyAdmin, async (req, res) => {
-    await tursoQuery(`DELETE FROM volunteers WHERE id = ?`, [req.params.id]);
-    res.json({ message: 'Đã xóa hồ sơ!' });
+    try {
+        await tursoQuery(`DELETE FROM volunteers WHERE id = ?`, [req.params.id]);
+        res.json({ message: 'Đã xóa hồ sơ!' });
+    } catch (e) {
+        res.status(500).json({ error: 'Lỗi xóa!' });
+    }
 });
 
 app.delete('/api/items/activity/:id', verifyAdmin, async (req, res) => {
-    await tursoQuery(`DELETE FROM activities WHERE id = ?`, [req.params.id]);
-    res.json({ message: 'Đã xóa!' });
+    try {
+        await tursoQuery(`DELETE FROM activities WHERE id = ?`, [req.params.id]);
+        res.json({ message: 'Đã xóa!' });
+    } catch (e) {
+        res.status(500).json({ error: 'Lỗi xóa!' });
+    }
 });
 
 app.delete('/api/items/violation/:id', verifyAdmin, async (req, res) => {
-    await tursoQuery(`DELETE FROM violations WHERE id = ?`, [req.params.id]);
-    res.json({ message: 'Đã xóa!' });
+    try {
+        await tursoQuery(`DELETE FROM violations WHERE id = ?`, [req.params.id]);
+        res.json({ message: 'Đã xóa!' });
+    } catch (e) {
+        res.status(500).json({ error: 'Lỗi xóa!' });
+    }
 });
 
 app.delete('/api/items/campaign/:id', verifyAdmin, async (req, res) => {
-    await tursoQuery(`DELETE FROM campaigns WHERE id = ?`, [req.params.id]);
-    res.json({ message: 'Đã xóa!' });
+    try {
+        await tursoQuery(`DELETE FROM campaigns WHERE id = ?`, [req.params.id]);
+        res.json({ message: 'Đã xóa!' });
+    } catch (e) {
+        res.status(500).json({ error: 'Lỗi xóa!' });
+    }
 });
 
 app.delete('/api/items/achievement/:id', verifyAdmin, async (req, res) => {
-    await tursoQuery(`DELETE FROM achievements WHERE id = ?`, [req.params.id]);
-    res.json({ message: 'Đã xóa!' });
+    try {
+        await tursoQuery(`DELETE FROM achievements WHERE id = ?`, [req.params.id]);
+        res.json({ message: 'Đã xóa!' });
+    } catch (e) {
+        res.status(500).json({ error: 'Lỗi xóa!' });
+    }
 });
 
 app.delete('/api/items/note/:id', verifyAdmin, async (req, res) => {
-    await tursoQuery(`DELETE FROM general_notes WHERE id = ?`, [req.params.id]);
-    res.json({ message: 'Đã xóa!' });
+    try {
+        await tursoQuery(`DELETE FROM general_notes WHERE id = ?`, [req.params.id]);
+        res.json({ message: 'Đã xóa!' });
+    } catch (e) {
+        res.status(500).json({ error: 'Lỗi xóa!' });
+    }
 });
 
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
-        
