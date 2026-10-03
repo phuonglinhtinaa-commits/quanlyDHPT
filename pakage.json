@@ -1,7 +1,6 @@
 {
   "name": "quanlydhpt",
   "version": "1.0.0",
-  "description": "Hệ thống Quản lý Tình nguyện viên",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
