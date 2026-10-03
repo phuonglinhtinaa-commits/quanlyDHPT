@@ -37,10 +37,7 @@ async function tursoQuery(sql, args = []) {
         },
         body: JSON.stringify({
             requests: [
-                {
-                    type: 'execute',
-                    stmt: { sql, args: formattedArgs }
-                },
+                { type: 'execute', stmt: { sql, args: formattedArgs } },
                 { type: 'close' }
             ]
         })
@@ -101,9 +98,8 @@ async function initDatabase() {
         for (const sql of tables) {
             await tursoQuery(sql);
         }
-        console.log("✅ Khởi tạo CSDL thành công!");
     } catch (e) {
-        console.error("❌ Lỗi CSDL:", e.message);
+        console.error("Lỗi CSDL:", e.message);
     }
 }
 initDatabase();
@@ -120,7 +116,6 @@ async function findVolunteer(fullName, studentId) {
     });
 }
 
-// API Routes
 app.post('/api/volunteers/register', async (req, res) => {
     const { fullName, studentId } = req.body;
     if (!fullName || !studentId) return res.status(400).json({ error: 'Vui lòng nhập đủ Họ tên và MSSV!' });
@@ -250,7 +245,6 @@ app.get('/api/volunteers', verifyAdmin, async (req, res) => {
 
         res.json(result);
     } catch (e) {
-        console.error("Lỗi bảng tổng kết:", e);
         res.status(500).json({ error: 'Lỗi tải dữ liệu bảng tổng kết: ' + e.message });
     }
 });
@@ -324,4 +318,4 @@ app.delete('/api/items/note/:id', verifyAdmin, async (req, res) => {
     }
 });
 
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
