@@ -13,8 +13,8 @@ if (rawUrl.startsWith('libsql://')) {
 const TURSO_URL = rawUrl;
 const TURSO_TOKEN = (process.env.TURSO_AUTH_TOKEN || '').trim();
 
-// Hàm xử lý bóc tách ô dữ liệu từ Turso Pipeline API
-function extractCellValue(cell) {
+// Hàm trích xuất giá trị thực từ cấu trúc cell của Turso API
+function parseTursoCell(cell) {
     if (cell === null || cell === undefined) return null;
     if (typeof cell === 'object') {
         if (cell.type === 'null') return null;
@@ -48,7 +48,6 @@ async function tursoQuery(sql, args = []) {
     });
 
     const data = await response.json();
-    
     if (!response.ok || data.batched_results?.[0]?.type === 'error') {
         const errMsg = data.batched_results?.[0]?.error?.message || JSON.stringify(data);
         throw new Error(errMsg);
@@ -63,7 +62,8 @@ async function tursoQuery(sql, args = []) {
     const rows = result.rows.map(row => {
         let obj = {};
         row.forEach((cell, idx) => {
-            obj[cols[idx]] = extractCellValue(cell);
+            const rawVal = parseTursoCell(cell);
+            obj[cols[idx]] = rawVal;
         });
         return obj;
     });
@@ -237,8 +237,8 @@ app.get('/api/volunteers', verifyAdmin, async (req, res) => {
 
             return {
                 id: vId,
-                fullName: v.fullName,
-                studentId: v.studentId,
+                fullName: String(v.fullName || ''),
+                studentId: String(v.studentId || ''),
                 isApproved: Number(v.isApproved || 0),
                 createdAt: v.createdAt,
                 activities: acts.rows || [],
