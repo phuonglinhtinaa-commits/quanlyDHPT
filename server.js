@@ -1,111 +1,45 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const { createClient } = require('@libsql/client');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const SCRIPT_URL = process.env.GOOGLE_SCRIPT_URL;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- KHỞI TẠO TURSO CLIENT ---
-let turso = null;
-try {
-    const dbUrl = (process.env.TURSO_DATABASE_URL || '').trim();
-    const dbToken = (process.env.TURSO_AUTH_TOKEN || '').trim();
-
-    if (dbUrl && dbToken) {
-        turso = createClient({
-            url: dbUrl,
-            authToken: dbToken
-        });
-        console.log("⚡ [TURSO] Khởi tạo SDK Turso thành công với URL:", dbUrl);
-    } else {
-        console.error("❌ [TURSO] Thiếu TURSO_DATABASE_URL hoặc TURSO_AUTH_TOKEN!");
-    }
-} catch (err) {
-    console.error("❌ [TURSO] Lỗi kết nối CSDL:", err.message);
+// Hàm phụ trợ gọi Google Apps Script qua HTTP POST/GET
+async function callScript(payload) {
+    if (!SCRIPT_URL) throw new Error("Chưa cấu hình GOOGLE_SCRIPT_URL");
+    const res = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    return await res.json();
 }
 
-// --- TỰ ĐỘNG TẠO BẢNG AN TOÀN ---
-async function initTables() {
-    if (!turso) return;
-
-    const queries = [
-        `CREATE TABLE IF NOT EXISTS volunteers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, 
-            fullName TEXT, 
-            studentId TEXT, 
-            isApproved INTEGER DEFAULT 0, 
-            createdAt TEXT
-        )`,
-        `CREATE TABLE IF NOT EXISTS activities (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, 
-            volunteerId INTEGER, 
-            jobContent TEXT, 
-            date TEXT, 
-            createdAt TEXT
-        )`,
-        `CREATE TABLE IF NOT EXISTS campaigns (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, 
-            volunteerId INTEGER, 
-            campaignName TEXT, 
-            createdAt TEXT
-        )`,
-        `CREATE TABLE IF NOT EXISTS violations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, 
-            volunteerId INTEGER, 
-            error TEXT, 
-            date TEXT, 
-            createdAt TEXT
-        )`,
-        `CREATE TABLE IF NOT EXISTS achievements (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, 
-            volunteerId INTEGER, 
-            content TEXT, 
-            createdAt TEXT
-        )`,
-        `CREATE TABLE IF NOT EXISTS general_notes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, 
-            volunteerId INTEGER, 
-            content TEXT, 
-            createdAt TEXT
-        )`
-    ];
-
-    for (const sql of queries) {
-        try {
-            await turso.execute(sql);
-        } catch (err) {
-            console.error("❌ [TURSO LỖI CREATETABLE]:", err.message);
-        }
-    }
-    console.log("✅ [TURSO] Kiểm tra và khởi tạo các bảng CSDL hoàn tất!");
-}
-initTables();
-
-// --- KHÔI PHỤC DỮ LIỆU TỪ TURSO (RESTORE) ---
+// --- KHÔI PHỤC DỮ LIỆU ---
 app.get('/api/volunteers/restore-from-turso', async (req, res) => {
-    if (!turso) return res.status(500).json({ error: "Chưa kết nối Turso" });
     try {
-        const vRes = await turso.execute("SELECT * FROM volunteers");
-        const aRes = await turso.execute("SELECT * FROM activities");
-        const cRes = await turso.execute("SELECT * FROM campaigns");
-        const viRes = await turso.execute("SELECT * FROM violations");
-        const acRes = await turso.execute("SELECT * FROM achievements");
-        const gRes = await turso.execute("SELECT * FROM general_notes");
+        if (!SCRIPT_URL) return res.status(500).json({ error: "Thiếu GOOGLE_SCRIPT_URL" });
+        const response = await fetch(`${SCRIPT_URL}?action=restore`);
+        const result = await response.json();
+        
+        if (!result.success) throw new Error("Không thể lấy dữ liệu từ Google Sheets");
 
+        const db = result.data;
         const volunteersMap = {};
 
-        vRes.rows.forEach(v => {
+        db.volunteers.forEach(v => {
             volunteersMap[v.id] = {
-                id: v.id,
+                id: Number(v.id),
                 fullName: v.fullName,
-                studentId: v.studentId,
-                isApproved: Boolean(v.isApproved),
+                studentId: String(v.studentId),
+                isApproved: Boolean(Number(v.isApproved)),
                 createdAt: v.createdAt,
                 activities: [],
                 campaigns: [],
@@ -115,41 +49,50 @@ app.get('/api/volunteers/restore-from-turso', async (req, res) => {
             };
         });
 
-        aRes.rows.forEach(a => {
-            if (volunteersMap[a.volunteerId]) volunteersMap[a.volunteerId].activities.push(a);
+        db.activities.forEach(a => {
+            const vId = Number(a.volunteerId);
+            if (volunteersMap[vId]) volunteersMap[vId].activities.push({ id: Number(a.id), jobContent: a.jobContent, date: a.date });
         });
-        cRes.rows.forEach(c => {
-            if (volunteersMap[c.volunteerId]) volunteersMap[c.volunteerId].campaigns.push(c);
+        db.campaigns.forEach(c => {
+            const vId = Number(c.volunteerId);
+            if (volunteersMap[vId]) volunteersMap[vId].campaigns.push({ id: Number(c.id), campaignName: c.campaignName });
         });
-        viRes.rows.forEach(vi => {
-            if (volunteersMap[vi.volunteerId]) volunteersMap[vi.volunteerId].violations.push(vi);
+        db.violations.forEach(vi => {
+            const vId = Number(vi.volunteerId);
+            if (volunteersMap[vId]) volunteersMap[vId].violations.push({ id: Number(vi.id), error: vi.error, date: vi.date });
         });
-        acRes.rows.forEach(ac => {
-            if (volunteersMap[ac.volunteerId]) volunteersMap[ac.volunteerId].achievements.push(ac);
+        db.achievements.forEach(ac => {
+            const vId = Number(ac.volunteerId);
+            if (volunteersMap[vId]) volunteersMap[vId].achievements.push({ id: Number(ac.id), content: ac.content });
         });
-        gRes.rows.forEach(g => {
-            if (volunteersMap[g.volunteerId]) volunteersMap[g.volunteerId].generalNotes.push(g);
+        db.general_notes.forEach(g => {
+            const vId = Number(g.volunteerId);
+            if (volunteersMap[vId]) volunteersMap[vId].generalNotes.push({ id: Number(g.id), content: g.content });
         });
 
         res.json({ success: true, data: Object.values(volunteersMap) });
     } catch (err) {
-        console.error("Lỗi restore từ Turso:", err);
+        console.error("Lỗi restore Google Sheets:", err);
         res.status(500).json({ error: err.message });
     }
 });
 
 // --- LẤY DANH SÁCH TÌNH NGUYỆN VIÊN ---
 app.get('/api/volunteers', async (req, res) => {
-    if (!turso) return res.json([]);
     try {
-        const result = await turso.execute("SELECT * FROM volunteers ORDER BY id DESC");
-        const volunteers = result.rows.map(v => ({
-            id: v.id,
+        if (!SCRIPT_URL) return res.json([]);
+        const response = await fetch(`${SCRIPT_URL}?action=restore`);
+        const result = await response.json();
+        if (!result.success) return res.json([]);
+
+        const volunteers = result.data.volunteers.map(v => ({
+            id: Number(v.id),
             fullName: v.fullName,
-            studentId: v.studentId,
-            isApproved: Boolean(v.isApproved),
+            studentId: String(v.studentId),
+            isApproved: Boolean(Number(v.isApproved)),
             createdAt: v.createdAt
-        }));
+        })).sort((a, b) => b.id - a.id);
+
         res.json(volunteers);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -162,17 +105,9 @@ app.post('/api/volunteers/register', async (req, res) => {
     if (!fullName || !studentId) {
         return res.status(400).json({ error: "Thiếu Họ tên hoặc MSSV" });
     }
-    const createdAt = new Date().toISOString();
     try {
-        if (turso) {
-            const result = await turso.execute({
-                sql: "INSERT INTO volunteers (fullName, studentId, isApproved, createdAt) VALUES (?, ?, 0, ?)",
-                args: [fullName, studentId, createdAt]
-            });
-            const newId = Number(result.lastInsertRowid);
-            return res.json({ id: newId, fullName, studentId, isApproved: false, createdAt });
-        }
-        res.status(500).json({ error: "Lỗi CSDL Turso" });
+        const result = await callScript({ action: 'register', fullName, studentId });
+        res.json({ id: result.id, fullName, studentId, isApproved: false, createdAt: result.createdAt });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -183,12 +118,7 @@ app.put('/api/volunteers/:id/approve', async (req, res) => {
     const { id } = req.params;
     const { isApproved } = req.body;
     try {
-        if (turso) {
-            await turso.execute({
-                sql: "UPDATE volunteers SET isApproved = ? WHERE id = ?",
-                args: [isApproved ? 1 : 0, id]
-            });
-        }
+        await callScript({ action: 'approve', id: Number(id), isApproved });
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -199,14 +129,7 @@ app.put('/api/volunteers/:id/approve', async (req, res) => {
 app.delete('/api/volunteers/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        if (turso) {
-            await turso.execute({ sql: "DELETE FROM volunteers WHERE id = ?", args: [id] });
-            await turso.execute({ sql: "DELETE FROM activities WHERE volunteerId = ?", args: [id] });
-            await turso.execute({ sql: "DELETE FROM campaigns WHERE volunteerId = ?", args: [id] });
-            await turso.execute({ sql: "DELETE FROM violations WHERE volunteerId = ?", args: [id] });
-            await turso.execute({ sql: "DELETE FROM achievements WHERE volunteerId = ?", args: [id] });
-            await turso.execute({ sql: "DELETE FROM general_notes WHERE volunteerId = ?", args: [id] });
-        }
+        await callScript({ action: 'delete', id: Number(id) });
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -218,13 +141,8 @@ app.post('/api/volunteers/:id/activities', async (req, res) => {
     const { id } = req.params;
     const { jobContent, date } = req.body;
     try {
-        if (turso) {
-            const result = await turso.execute({
-                sql: "INSERT INTO activities (volunteerId, jobContent, date, createdAt) VALUES (?, ?, ?, ?)",
-                args: [id, jobContent, date, new Date().toISOString()]
-            });
-            return res.json({ id: Number(result.lastInsertRowid), volunteerId: Number(id), jobContent, date });
-        }
+        const r = await callScript({ action: 'activities', volunteerId: Number(id), jobContent, date });
+        res.json({ id: r.id, volunteerId: Number(id), jobContent, date });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -232,13 +150,8 @@ app.post('/api/volunteers/:id/campaigns', async (req, res) => {
     const { id } = req.params;
     const { campaignName } = req.body;
     try {
-        if (turso) {
-            const result = await turso.execute({
-                sql: "INSERT INTO campaigns (volunteerId, campaignName, createdAt) VALUES (?, ?, ?)",
-                args: [id, campaignName, new Date().toISOString()]
-            });
-            return res.json({ id: Number(result.lastInsertRowid), volunteerId: Number(id), campaignName });
-        }
+        const r = await callScript({ action: 'campaigns', volunteerId: Number(id), campaignName });
+        res.json({ id: r.id, volunteerId: Number(id), campaignName });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -246,13 +159,8 @@ app.post('/api/volunteers/:id/violations', async (req, res) => {
     const { id } = req.params;
     const { error, date } = req.body;
     try {
-        if (turso) {
-            const result = await turso.execute({
-                sql: "INSERT INTO violations (volunteerId, error, date, createdAt) VALUES (?, ?, ?, ?)",
-                args: [id, error, date, new Date().toISOString()]
-            });
-            return res.json({ id: Number(result.lastInsertRowid), volunteerId: Number(id), error, date });
-        }
+        const r = await callScript({ action: 'violations', volunteerId: Number(id), error, date });
+        res.json({ id: r.id, volunteerId: Number(id), error, date });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -260,13 +168,8 @@ app.post('/api/volunteers/:id/achievements', async (req, res) => {
     const { id } = req.params;
     const { content } = req.body;
     try {
-        if (turso) {
-            const result = await turso.execute({
-                sql: "INSERT INTO achievements (volunteerId, content, createdAt) VALUES (?, ?, ?)",
-                args: [id, content, new Date().toISOString()]
-            });
-            return res.json({ id: Number(result.lastInsertRowid), volunteerId: Number(id), content });
-        }
+        const r = await callScript({ action: 'achievements', volunteerId: Number(id), content });
+        res.json({ id: r.id, volunteerId: Number(id), content });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -274,13 +177,8 @@ app.post('/api/volunteers/:id/general_notes', async (req, res) => {
     const { id } = req.params;
     const { content } = req.body;
     try {
-        if (turso) {
-            const result = await turso.execute({
-                sql: "INSERT INTO general_notes (volunteerId, content, createdAt) VALUES (?, ?, ?)",
-                args: [id, content, new Date().toISOString()]
-            });
-            return res.json({ id: Number(result.lastInsertRowid), volunteerId: Number(id), content });
-        }
+        const r = await callScript({ action: 'general_notes', volunteerId: Number(id), content });
+        res.json({ id: r.id, volunteerId: Number(id), content });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
