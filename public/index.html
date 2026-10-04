@@ -118,10 +118,9 @@
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
                 <h2 class="text-lg font-bold text-slate-800">Bảng tổng kết quá trình hoạt động</h2>
                 
-                <!-- THANH NÚT CHỨC NĂNG ADMIN -->
                 <div id="admin-actions-bar" class="hidden flex flex-wrap gap-2">
-                    <button onclick="syncDataFromTurso()" class="bg-blue-600 text-white font-bold px-4 py-2 rounded hover:bg-blue-700 text-xs shadow flex items-center gap-1">
-                        🔄 Khôi Phục / Đồng Bộ Turso
+                    <button onclick="restoreFromTurso()" class="bg-amber-600 text-white font-bold px-4 py-2 rounded hover:bg-amber-700 text-xs shadow flex items-center gap-1">
+                        🔄 Khôi Phục Dữ Liệu Từ Turso
                     </button>
                     <button onclick="exportToExcel()" class="bg-emerald-700 text-white font-bold px-4 py-2 rounded hover:bg-emerald-800 text-xs shadow">
                         📊 Xuất Excel
@@ -137,8 +136,7 @@
 
             <div id="summary-content" class="hidden space-y-6">
                 
-                <!-- BẢNG DANH SÁCH CHỜ DUYỆT -->
-                <div id="pending-wrapper" class="border-2 border-amber-400 bg-amber-50 p-4 rounded shadow-sm">
+                <div id="pending-box" class="border-2 border-amber-400 bg-amber-50 p-4 rounded shadow-sm">
                     <h3 class="font-bold text-amber-900 text-sm mb-2 uppercase flex items-center gap-2">
                         <span>⏳</span> Danh sách hồ sơ mới khởi tạo (Chờ duyệt)
                     </h3>
@@ -153,13 +151,12 @@
                                 </tr>
                             </thead>
                             <tbody id="pending-tbody">
-                                <tr><td colspan="4" class="p-3 text-slate-500">Đang tải dữ liệu chờ duyệt từ Turso...</td></tr>
+                                <tr><td colspan="4" class="p-3 text-slate-500">Đang tải dữ liệu...</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- BẢNG TỔNG KẾT CHI TIẾT -->
                 <div>
                     <h3 class="font-bold text-slate-700 text-sm mb-2 uppercase">✅ Bảng tổng kết chi tiết Tình nguyện viên</h3>
                     <div class="overflow-x-auto">
@@ -188,7 +185,7 @@
                                 </tr>
                             </thead>
                             <tbody id="summary-tbody">
-                                <tr><td colspan="14" class="p-4 text-center text-slate-500">Chưa có dữ liệu</td></tr>
+                                <tr><td colspan="14" class="p-4 text-center text-slate-500">Chưa có hồ sơ nào</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -306,19 +303,13 @@
             const pass = document.getElementById('summary-admin-pass').value.trim();
             if (!pass) return alert('Vui lòng nhập mật khẩu Admin!');
             currentAdminPass = pass;
-            await syncDataFromTurso();
+            await loadDataFromMemory();
         }
 
-        // CHỨC NĂNG KHÔI PHỤC / ĐỒNG BỘ TRỰC TIẾP TỪ TURSO
-        async function syncDataFromTurso() {
-            if (!currentAdminPass) return alert('Chưa đăng nhập mật khẩu Admin!');
+        async function loadDataFromMemory() {
             try {
-                // Thêm timestamp để cấm cache triệt để
-                const res = await fetch('/api/volunteers?t=' + Date.now(), { 
-                    headers: { 'x-admin-password': currentAdminPass } 
-                });
-                
-                if (!res.ok) return alert('Mật khẩu Admin không đúng hoặc lỗi kết nối!');
+                const res = await fetch('/api/volunteers', { headers: { 'x-admin-password': currentAdminPass } });
+                if (!res.ok) return alert('Mật khẩu Admin sai!');
                 
                 rawVolunteersData = await res.json();
 
@@ -328,18 +319,35 @@
 
                 renderAllTables(rawVolunteersData);
             } catch (err) {
-                alert("Lỗi tải dữ liệu từ Turso: " + err.message);
+                alert("Lỗi tải dữ liệu: " + err.message);
+            }
+        }
+
+        // CHỨC NĂNG KHÔI PHỤC DỮ LIỆU TỪ TURSO VỀ BỘ NHỚ TẠM
+        async function restoreFromTurso() {
+            if (!confirm('Khôi phục toàn bộ dữ liệu từ Turso vào bộ nhớ tạm?')) return;
+            try {
+                const res = await fetch('/api/volunteers/restore-from-turso', {
+                    method: 'POST',
+                    headers: { 'x-admin-password': currentAdminPass }
+                });
+                const data = await res.json();
+                alert(data.message || data.error);
+                if (res.ok) {
+                    await loadDataFromMemory();
+                }
+            } catch (err) {
+                alert("Lỗi khôi phục: " + err.message);
             }
         }
 
         function renderAllTables(data) {
             if (!Array.isArray(data)) data = [];
 
-            // Ép kiểu bắt ép duyệt hay chưa
-            const pendingList = data.filter(v => Number(v.isApproved) === 0 || String(v.isApproved) === '0');
-            const approvedList = data.filter(v => Number(v.isApproved) === 1 || String(v.isApproved) === '1');
+            const pendingList = data.filter(v => Number(v.isApproved) === 0);
+            const approvedList = data.filter(v => Number(v.isApproved) === 1);
 
-            // Render danh sách chờ duyệt
+            // Bảng Chờ Duyệt
             const pendingTbody = document.getElementById('pending-tbody');
             if (pendingList.length > 0) {
                 pendingTbody.innerHTML = pendingList.map(v => `
@@ -353,13 +361,13 @@
                         </td>
                     </tr>`).join('');
             } else {
-                pendingTbody.innerHTML = `<tr><td colspan="4" class="p-3 text-slate-400 italic">Hiện không có hồ sơ nào chờ duyệt trong Turso.</td></tr>`;
+                pendingTbody.innerHTML = `<tr><td colspan="4" class="p-3 text-slate-400 italic">Hiện không có hồ sơ nào chờ duyệt trong bộ nhớ tạm. (Hãy nhấn 'Khôi Phục Dữ Liệu Từ Turso' nếu cần)</td></tr>`;
             }
 
-            // Render bảng tổng kết chi tiết
+            // Bảng Tổng Kết Chi Tiết
             const summaryTbody = document.getElementById('summary-tbody');
             if (approvedList.length === 0) {
-                summaryTbody.innerHTML = `<tr><td colspan="14" class="p-4 text-center text-slate-500 font-medium">Chưa có hồ sơ nào được duyệt. Bấm nút ✅ Duyệt ở danh sách chờ phía trên!</td></tr>`;
+                summaryTbody.innerHTML = `<tr><td colspan="14" class="p-4 text-center text-slate-500 font-medium">Chưa có hồ sơ nào được duyệt trong bộ nhớ tạm.</td></tr>`;
                 return;
             }
 
@@ -386,7 +394,7 @@
             const res = await fetch(`/api/volunteers/${id}/approve`, { method: 'POST', headers: { 'x-admin-password': currentAdminPass } });
             const data = await res.json();
             alert(data.message || data.error);
-            if (res.ok) syncDataFromTurso();
+            if (res.ok) loadDataFromMemory();
         }
 
         async function deleteVolunteerRecord(id) {
@@ -394,11 +402,11 @@
             const res = await fetch(`/api/volunteers/${id}`, { method: 'DELETE', headers: { 'x-admin-password': currentAdminPass } });
             const data = await res.json();
             alert(data.message || data.error);
-            if (res.ok) syncDataFromTurso();
+            if (res.ok) loadDataFromMemory();
         }
 
         function exportToExcel() {
-            const approvedData = rawVolunteersData.filter(v => Number(v.isApproved) === 1 || String(v.isApproved) === '1');
+            const approvedData = rawVolunteersData.filter(v => Number(v.isApproved) === 1);
             const exportRows = approvedData.map((v, i) => ({
                 "STT": i + 1, "Họ tên": v.fullName, "MSSV": v.studentId, "Số buổi TN": (v.activities || []).length
             }));
