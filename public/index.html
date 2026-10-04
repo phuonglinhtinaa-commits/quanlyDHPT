@@ -3,418 +3,228 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản lý Tình nguyện viên - Kỳ 2026.1</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <title>Hệ thống Quản lý Tình nguyện viên - 2026.1</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <style>
-        table th, table td {
-            border: 1px solid #cbd5e1;
-            text-align: center;
-            vertical-align: middle;
-        }
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .navbar { background-color: #0d6efd; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .card { border: none; border-radius: 10px; box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075); margin-bottom: 20px; }
+        .card-header { background-color: #fff; border-bottom: 1px solid rgba(0,0,0,.125); font-weight: bold; border-top-left-radius: 10px !important; border-top-right-radius: 10px !important; }
+        .table th { background-color: #f8f9fa; color: #495057; font-weight: 600; }
+        .badge-status { font-size: 0.85rem; padding: 0.35em 0.65em; }
     </style>
 </head>
-<body class="bg-slate-100 text-slate-800 font-sans min-h-screen pb-10">
+<body>
 
-    <header class="bg-blue-700 text-white shadow-lg">
-        <div class="container mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center">
-            <h1 class="text-xl font-bold uppercase tracking-wide">Hệ thống Quản lý Tình nguyện viên</h1>
-            <span class="text-sm bg-blue-800 px-3 py-1 rounded-full mt-2 md:mt-0 font-medium">Kỳ học: 2026.1</span>
+    <!-- Navbar -->
+    <nav class="navbar navbar-dark mb-4">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">
+                <i class="bi bi-shield-check me-2"></i>Quản lý Hoạt động & Đánh giá Tình nguyện viên (Kỳ 2026.1)
+            </span>
+            <button class="btn btn-light btn-sm" onclick="syncDataFromCloud()">
+                <i class="bi bi-cloud-arrow-down-fill me-1"></i> Tải lại dữ liệu
+            </button>
         </div>
-    </header>
+    </nav>
 
-    <main class="container mx-auto px-4 mt-6">
+    <div class="container-fluid px-4">
         
-        <div class="flex flex-wrap gap-2 border-b border-slate-300 pb-3 mb-6">
-            <button onclick="showTab('init')" id="btn-init" class="tab-btn px-4 py-2 bg-blue-700 text-white rounded font-medium shadow">0. Khởi tạo TNV mới</button>
-            <button onclick="showTab('form1')" id="btn-form1" class="tab-btn px-4 py-2 bg-white text-slate-700 rounded font-medium border hover:bg-slate-50">1. Đội viên điền buổi TN</button>
-            <button onclick="showTab('form2')" id="btn-form2" class="tab-btn px-4 py-2 bg-white text-slate-700 rounded font-medium border hover:bg-slate-50">2. Điền chiến dịch lớn</button>
-            <button onclick="showTab('form3')" id="btn-form3" class="tab-btn px-4 py-2 bg-white text-slate-700 rounded font-medium border hover:bg-slate-50">3. Điền ghi chú bổ sung</button>
-            <button onclick="showTab('lookup')" id="btn-lookup" class="tab-btn px-4 py-2 bg-white text-slate-700 rounded font-medium border hover:bg-slate-50">4. Tra cứu cá nhân</button>
-            <button onclick="showTab('summary')" id="btn-summary" class="tab-btn px-4 py-2 bg-white text-slate-700 rounded font-medium border hover:bg-slate-50">🔒 Bảng tổng kết</button>
-        </div>
-
-        <!-- TAB 0 -->
-        <div id="tab-init" class="tab-content bg-white p-6 rounded shadow max-w-2xl mx-auto">
-            <h2 class="text-lg font-bold text-blue-800 mb-4">Khởi tạo Tình nguyện viên mới</h2>
-            <form id="init-form" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-semibold mb-1">Họ và Tên (*)</label>
-                    <input type="text" id="init-fullName" required class="w-full border p-2 rounded">
-                </div>
-                <div>
-                    <label class="block text-sm font-semibold mb-1">Mã Số Sinh Viên (MSSV) (*)</label>
-                    <input type="text" id="init-studentId" required class="w-full border p-2 rounded">
-                </div>
-                <button type="submit" class="bg-blue-700 text-white font-bold px-6 py-2 rounded hover:bg-blue-800 w-full">Gửi đăng ký khởi tạo</button>
-            </form>
-        </div>
-
-        <!-- TAB 1 -->
-        <div id="tab-form1" class="tab-content hidden bg-white p-6 rounded shadow max-w-2xl mx-auto">
-            <h2 class="text-lg font-bold text-blue-800 mb-4">Form 1: Ghi nhận buổi tình nguyện</h2>
-            <form id="f1-form" class="space-y-4">
-                <div><label class="block text-sm font-semibold mb-1">Họ và Tên (*)</label><input type="text" id="f1-fullName" required class="w-full border p-2 rounded"></div>
-                <div><label class="block text-sm font-semibold mb-1">MSSV (*)</label><input type="text" id="f1-studentId" required class="w-full border p-2 rounded"></div>
-                <div><label class="block text-sm font-semibold mb-1">Tên công việc (*)</label><input type="text" id="f1-jobContent" required class="w-full border p-2 rounded"></div>
-                <div><label class="block text-sm font-semibold mb-1">Ngày thực hiện (*)</label><input type="date" id="f1-date" required class="w-full border p-2 rounded"></div>
-                <button type="submit" class="bg-blue-700 text-white font-bold px-6 py-2 rounded hover:bg-blue-800 w-full">Gửi thông tin</button>
-            </form>
-        </div>
-
-        <!-- TAB 2 -->
-        <div id="tab-form2" class="tab-content hidden bg-white p-6 rounded shadow max-w-2xl mx-auto">
-            <h2 class="text-lg font-bold text-emerald-800 mb-4">Form 2: Ghi nhận chiến dịch lớn</h2>
-            <form id="f2-form" class="space-y-4">
-                <div><label class="block text-sm font-semibold mb-1">Họ và Tên (*)</label><input type="text" id="f2-fullName" required class="w-full border p-2 rounded"></div>
-                <div><label class="block text-sm font-semibold mb-1">MSSV (*)</label><input type="text" id="f2-studentId" required class="w-full border p-2 rounded"></div>
-                <div><label class="block text-sm font-semibold mb-1">Tên chiến dịch (*)</label><input type="text" id="f2-campaignName" required class="w-full border p-2 rounded"></div>
-                <button type="submit" class="bg-emerald-700 text-white font-bold px-6 py-2 rounded hover:bg-emerald-800 w-full">Gửi chiến dịch</button>
-            </form>
-        </div>
-
-        <!-- TAB 3 -->
-        <div id="tab-form3" class="tab-content hidden bg-white p-6 rounded shadow max-w-2xl mx-auto">
-            <h2 class="text-lg font-bold text-amber-800 mb-4">Form 3: Ghi nhận Vi phạm / Thành tích / Ghi chú (Admin)</h2>
-            <form id="f3-form" class="space-y-4">
-                <div><label class="block text-sm font-semibold mb-1">Họ và Tên TNV (*)</label><input type="text" id="f3-fullName" required class="w-full border p-2 rounded"></div>
-                <div><label class="block text-sm font-semibold mb-1">MSSV</label><input type="text" id="f3-studentId" class="w-full border p-2 rounded"></div>
-                <div>
-                    <label class="block text-sm font-semibold mb-1">Loại ghi nhận (*)</label>
-                    <select id="f3-category" onchange="toggleF3Fields()" class="w-full border p-2 rounded">
-                        <option value="violation">Lỗi vi phạm</option>
-                        <option value="achievement">Thành tích</option>
-                        <option value="note">Ghi chú khác</option>
-                    </select>
-                </div>
-                <div id="f3-field-violation" class="space-y-3 p-3 bg-red-50 border border-red-200 rounded">
-                    <div><label class="block text-sm font-semibold mb-1 text-red-800">Tên lỗi (*)</label><input type="text" id="f3-violationError" class="w-full border p-2 rounded"></div>
-                    <div><label class="block text-sm font-semibold mb-1 text-red-800">Ngày vi phạm (*)</label><input type="date" id="f3-violationDate" class="w-full border p-2 rounded"></div>
-                </div>
-                <div id="f3-field-achievement" class="hidden p-3 bg-emerald-50 border border-emerald-200 rounded">
-                    <label class="block text-sm font-semibold mb-1 text-emerald-800">Nội dung thành tích (*)</label><input type="text" id="f3-achievementContent" class="w-full border p-2 rounded">
-                </div>
-                <div id="f3-field-note" class="hidden p-3 bg-blue-50 border border-blue-200 rounded">
-                    <label class="block text-sm font-semibold mb-1 text-blue-800">Nội dung ghi chú (*)</label><textarea id="f3-noteContent" rows="3" class="w-full border p-2 rounded"></textarea>
-                </div>
-                <div><label class="block text-sm font-semibold mb-1">Mật khẩu Admin (*)</label><input type="password" id="f3-adminPass" required class="w-full border p-2 rounded"></div>
-                <button type="submit" class="bg-amber-700 text-white font-bold px-6 py-2 rounded hover:bg-amber-800 w-full">Lưu cập nhật</button>
-            </form>
-        </div>
-
-        <!-- TAB 4 -->
-        <div id="tab-lookup" class="tab-content hidden bg-white p-6 rounded shadow max-w-2xl mx-auto">
-            <h2 class="text-lg font-bold text-purple-800 mb-4">Tra cứu kết quả cá nhân</h2>
-            <form id="lookup-form" class="space-y-4 mb-6">
-                <div><label class="block text-sm font-semibold mb-1">Họ và Tên (*)</label><input type="text" id="lk-fullName" required class="w-full border p-2 rounded"></div>
-                <div><label class="block text-sm font-semibold mb-1">MSSV (*)</label><input type="text" id="lk-studentId" required class="w-full border p-2 rounded"></div>
-                <button type="submit" class="bg-purple-700 text-white font-bold px-6 py-2 rounded hover:bg-purple-800 w-full">Xem kết quả</button>
-            </form>
-            <div id="lookup-result" class="hidden border-t pt-4"></div>
-        </div>
-
-        <!-- TAB 5 -->
-        <div id="tab-summary" class="tab-content hidden bg-white p-6 rounded shadow">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
-                <h2 class="text-lg font-bold text-slate-800">Bảng tổng kết quá trình hoạt động</h2>
-                
-                <div id="admin-actions-bar" class="hidden flex flex-wrap gap-2">
-                    <button onclick="restoreFromTurso()" class="bg-amber-600 text-white font-bold px-4 py-2 rounded hover:bg-amber-700 text-xs shadow flex items-center gap-1">
-                        🔄 Khôi Phục Dữ Liệu Từ Turso
-                    </button>
-                    <button onclick="exportToExcel()" class="bg-emerald-700 text-white font-bold px-4 py-2 rounded hover:bg-emerald-800 text-xs shadow">
-                        📊 Xuất Excel
-                    </button>
-                </div>
-            </div>
-
-            <div id="admin-lock-box" class="p-6 bg-slate-50 border rounded text-center max-w-md mx-auto my-6">
-                <p class="font-medium text-slate-700 mb-3">Nhập Mật Khẩu Admin:</p>
-                <input type="password" id="summary-admin-pass" class="border p-2 rounded w-full mb-3 text-center" placeholder="Mật khẩu...">
-                <button onclick="unlockSummaryTable()" class="bg-blue-700 text-white px-6 py-2 rounded font-bold hover:bg-blue-800 w-full">Mở Khóa Bảng</button>
-            </div>
-
-            <div id="summary-content" class="hidden space-y-6">
-                
-                <div id="pending-box" class="border-2 border-amber-400 bg-amber-50 p-4 rounded shadow-sm">
-                    <h3 class="font-bold text-amber-900 text-sm mb-2 uppercase flex items-center gap-2">
-                        <span>⏳</span> Danh sách hồ sơ mới khởi tạo (Chờ duyệt)
-                    </h3>
-                    <div class="overflow-x-auto">
-                        <table class="w-full border-collapse bg-white text-xs">
-                            <thead>
-                                <tr class="bg-amber-200 font-bold text-amber-900">
-                                    <th class="p-2">Họ và Tên</th>
-                                    <th class="p-2">MSSV</th>
-                                    <th class="p-2">Thời gian</th>
-                                    <th class="p-2">Thao tác Admin</th>
-                                </tr>
-                            </thead>
-                            <tbody id="pending-tbody">
-                                <tr><td colspan="4" class="p-3 text-slate-500">Đang tải dữ liệu...</td></tr>
-                            </tbody>
-                        </table>
+        <!-- Form Đăng ký Tình nguyện viên mới -->
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header text-primary">
+                        <i class="bi bi-person-plus-fill me-1"></i> Thêm Tình nguyện viên mới
+                    </div>
+                    <div class="card-body">
+                        <form id="registerForm">
+                            <div class="mb-3">
+                                <label for="fullName" class="form-label">Họ và tên</label>
+                                <input type="text" class="form-control" id="fullName" required placeholder="Nhập họ và tên...">
+                            </div>
+                            <div class="mb-3">
+                                <label for="studentId" class="form-label">Mã sinh viên (MSSV)</label>
+                                <input type="text" class="form-control" id="studentId" required placeholder="Nhập mã sinh viên...">
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-plus-circle me-1"></i> Thêm vào hệ thống
+                            </button>
+                        </form>
                     </div>
                 </div>
 
-                <div>
-                    <h3 class="font-bold text-slate-700 text-sm mb-2 uppercase">✅ Bảng tổng kết chi tiết Tình nguyện viên</h3>
-                    <div class="overflow-x-auto">
-                        <table class="w-full border-collapse bg-white text-xs">
-                            <thead>
-                                <tr class="bg-slate-200 font-bold text-slate-800">
-                                    <th rowspan="2" class="p-2 w-10">STT</th>
-                                    <th rowspan="2" class="p-2 w-32">Họ và Tên</th>
-                                    <th rowspan="2" class="p-2 w-24">MSSV</th>
-                                    <th colspan="3" class="p-2 bg-blue-100 text-blue-900 border-b">TÌNH NGUYỆN</th>
-                                    <th colspan="3" class="p-2 bg-red-100 text-red-900 border-b">VI PHẠM</th>
-                                    <th colspan="3" class="p-2 bg-emerald-100 text-emerald-900 border-b">CHIẾN DỊCH</th>
-                                    <th rowspan="2" class="p-2 w-36 bg-slate-100">GHI CHÚ</th>
-                                    <th rowspan="2" class="p-2 w-12">Hồ sơ</th>
-                                </tr>
-                                <tr class="bg-slate-100 font-semibold text-slate-700">
-                                    <th class="p-2 bg-blue-50">Công việc</th>
-                                    <th class="p-2 bg-blue-50 w-24">Ngày</th>
-                                    <th class="p-2 bg-blue-50 w-16">Tổng</th>
-                                    <th class="p-2 bg-red-50">Tên Lỗi</th>
-                                    <th class="p-2 bg-red-50 w-24">Ngày</th>
-                                    <th class="p-2 bg-red-50 w-16">Tổng</th>
-                                    <th class="p-2 bg-emerald-50">Tên</th>
-                                    <th class="p-2 bg-emerald-50">Thành tích</th>
-                                    <th class="p-2 bg-emerald-50 w-16">Tổng</th>
-                                </tr>
-                            </thead>
-                            <tbody id="summary-tbody">
-                                <tr><td colspan="14" class="p-4 text-center text-slate-500">Chưa có hồ sơ nào</td></tr>
-                            </tbody>
-                        </table>
+                <!-- Bảng Thống kê nhanh -->
+                <div class="card">
+                    <div class="card-header text-secondary">
+                        <i class="bi bi-bar-chart-fill me-1"></i> Tổng quan
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Tổng số Tình nguyện viên
+                                <span class="badge bg-primary rounded-pill" id="totalVolunteers">0</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Đã duyệt / Đạt
+                                <span class="badge bg-success rounded-pill" id="totalApproved">0</span>
+                            </li>
+                        </ul>
                     </div>
                 </div>
+            </div>
 
+            <!-- Danh sách Tình nguyện viên -->
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center text-dark">
+                        <span><i class="bi bi-list-columns-reverse me-1"></i> Danh sách Tình nguyện viên</span>
+                        <div class="input-group input-group-sm" style="width: 250px;">
+                            <input type="text" class="form-control" id="searchInput" placeholder="Tìm kiếm TNV..." onkeyup="filterTable()">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+                            <table class="table table-hover align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>MSSV</th>
+                                        <th>Họ và tên</th>
+                                        <th>Trạng thái</th>
+                                        <th class="text-center">Thao tác chi tiết</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="volunteerTableBody">
+                                    <!-- Render bằng JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-    </main>
 
-    <script>
-        let currentAdminPass = '';
-        let rawVolunteersData = [];
+    </div>
 
-        function showTab(tabName) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('bg-blue-700', 'text-white');
-                btn.classList.add('bg-white', 'text-slate-700');
-            });
-            document.getElementById('tab-' + tabName).classList.remove('hidden');
-            const activeBtn = document.getElementById('btn-' + tabName);
-            if (activeBtn) {
-                activeBtn.classList.remove('bg-white', 'text-slate-700');
-                activeBtn.classList.add('bg-blue-700', 'text-white');
-            }
-        }
+    <!-- MODAL QUẢN LÝ CHI TIẾT TỪNG TNV -->
+    <div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-person-badge me-2"></i>Hồ sơ chi tiết: <span id="modalTnvName"></span></h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body bg-light">
+                    <input type="hidden" id="currentModalTnvId">
 
-        function toggleF3Fields() {
-            const cat = document.getElementById('f3-category').value;
-            document.getElementById('f3-field-violation').classList.toggle('hidden', cat !== 'violation');
-            document.getElementById('f3-field-achievement').classList.toggle('hidden', cat !== 'achievement');
-            document.getElementById('f3-field-note').classList.toggle('hidden', cat !== 'note');
-        }
+                    <!-- Nav tabs chi tiết -->
+                    <ul class="nav nav-tabs mb-3" id="detailTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="activities-tab" data-bs-toggle="tab" data-bs-target="#activities-pane" type="button" role="tab"><i class="bi bi-activity me-1"></i> Hoạt động</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="campaigns-tab" data-bs-toggle="tab" data-bs-target="#campaigns-pane" type="button" role="tab"><i class="bi bi-flag me-1"></i> Chiến dịch</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="violations-tab" data-bs-toggle="tab" data-bs-target="#violations-pane" type="button" role="tab"><i class="bi bi-exclamation-triangle me-1"></i> Vi phạm</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="achievements-tab" data-bs-toggle="tab" data-bs-target="#achievements-pane" type="button" role="tab"><i class="bi bi-award me-1"></i> Thành tích</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="notes-tab" data-bs-toggle="tab" data-bs-target="#notes-pane" type="button" role="tab"><i class="bi bi-journal-text me-1"></i> Ghi chú chung</button>
+                        </li>
+                    </ul>
 
-        document.getElementById('init-form').onsubmit = async (e) => {
-            e.preventDefault();
-            const res = await fetch('/api/volunteers/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fullName: document.getElementById('init-fullName').value, studentId: document.getElementById('init-studentId').value })
-            });
-            const data = await res.json();
-            alert(data.message || data.error);
-            if (res.ok) e.target.reset();
-        };
+                    <!-- Tab contents -->
+                    <div class="tab-content">
+                        <!-- Hoạt động -->
+                        <div class="tab-pane fade show active" id="activities-pane" role="tabpanel">
+                            <div class="card p-3 mb-3">
+                                <form id="activityForm" class="row g-2">
+                                    <div class="col-md-7"><input type="text" class="form-control" id="jobContent" placeholder="Nội dung công việc..." required></div>
+                                    <div class="col-md-3"><input type="date" class="form-control" id="activityDate" required></div>
+                                    <div class="col-md-2"><button type="submit" class="btn btn-success w-100"><i class="bi bi-plus-lg"></i> Thêm</button></div>
+                                </form>
+                            </div>
+                            <table class="table table-sm table-bordered bg-white">
+                                <thead><tr><th>Nội dung công việc</th><th>Ngày</th></tr></thead>
+                                <tbody id="activitiesList"></tbody>
+                            </table>
+                        </div>
 
-        document.getElementById('f1-form').onsubmit = async (e) => {
-            e.preventDefault();
-            const res = await fetch('/api/volunteers/activity', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fullName: document.getElementById('f1-fullName').value, studentId: document.getElementById('f1-studentId').value, jobContent: document.getElementById('f1-jobContent').value, date: document.getElementById('f1-date').value })
-            });
-            const data = await res.json();
-            alert(data.message || data.error);
-            if (res.ok) e.target.reset();
-        };
+                        <!-- Chiến dịch -->
+                        <div class="tab-pane fade" id="campaigns-pane" role="tabpanel">
+                            <div class="card p-3 mb-3">
+                                <form id="campaignForm" class="row g-2">
+                                    <div class="col-md-10"><input type="text" class="form-control" id="campaignName" placeholder="Tên chiến dịch tham gia..." required></div>
+                                    <div class="col-md-2"><button type="submit" class="btn btn-success w-100"><i class="bi bi-plus-lg"></i> Thêm</button></div>
+                                </form>
+                            </div>
+                            <table class="table table-sm table-bordered bg-white">
+                                <thead><tr><th>Tên chiến dịch</th></tr></thead>
+                                <tbody id="campaignsList"></tbody>
+                            </table>
+                        </div>
 
-        document.getElementById('f2-form').onsubmit = async (e) => {
-            e.preventDefault();
-            const res = await fetch('/api/volunteers/campaign', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fullName: document.getElementById('f2-fullName').value, studentId: document.getElementById('f2-studentId').value, campaignName: document.getElementById('f2-campaignName').value })
-            });
-            const data = await res.json();
-            alert(data.message || data.error);
-            if (res.ok) e.target.reset();
-        };
+                        <!-- Vi phạm -->
+                        <div class="tab-pane fade" id="violations-pane" role="tabpanel">
+                            <div class="card p-3 mb-3">
+                                <form id="violationForm" class="row g-2">
+                                    <div class="col-md-7"><input type="text" class="form-control" id="violationError" placeholder="Lỗi / Vi phạm..." required></div>
+                                    <div class="col-md-3"><input type="date" class="form-control" id="violationDate" required></div>
+                                    <div class="col-md-2"><button type="submit" class="btn btn-danger w-100"><i class="bi bi-plus-lg"></i> Thêm</button></div>
+                                </form>
+                            </div>
+                            <table class="table table-sm table-bordered bg-white">
+                                <thead><tr><th>Nội dung vi phạm</th><th>Ngày ghi nhận</th></tr></thead>
+                                <tbody id="violationsList"></tbody>
+                            </table>
+                        </div>
 
-        document.getElementById('f3-form').onsubmit = async (e) => {
-            e.preventDefault();
-            const adminPass = document.getElementById('f3-adminPass').value.trim();
-            const res = await fetch('/api/volunteers/additional-info', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-admin-password': adminPass },
-                body: JSON.stringify({
-                    fullName: document.getElementById('f3-fullName').value,
-                    studentId: document.getElementById('f3-studentId').value,
-                    category: document.getElementById('f3-category').value,
-                    violationError: document.getElementById('f3-violationError').value,
-                    violationDate: document.getElementById('f3-violationDate').value,
-                    achievementContent: document.getElementById('f3-achievementContent').value,
-                    noteContent: document.getElementById('f3-noteContent').value
-                })
-            });
-            const data = await res.json();
-            alert(data.message || data.error);
-            if (res.ok) { e.target.reset(); toggleF3Fields(); }
-        };
+                        <!-- Thành tích -->
+                        <div class="tab-pane fade" id="achievements-pane" role="tabpanel">
+                            <div class="card p-3 mb-3">
+                                <form id="achievementForm" class="row g-2">
+                                    <div class="col-md-10"><input type="text" class="form-control" id="achievementContent" placeholder="Nội dung khen thưởng / thành tích..." required></div>
+                                    <div class="col-md-2"><button type="submit" class="btn btn-success w-100"><i class="bi bi-plus-lg"></i> Thêm</button></div>
+                                </form>
+                            </div>
+                            <table class="table table-sm table-bordered bg-white">
+                                <thead><tr><th>Nội dung thành tích</th></tr></thead>
+                                <tbody id="achievementsList"></tbody>
+                            </table>
+                        </div>
 
-        document.getElementById('lookup-form').onsubmit = async (e) => {
-            e.preventDefault();
-            const res = await fetch('/api/volunteers/my-profile', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fullName: document.getElementById('lk-fullName').value, studentId: document.getElementById('lk-studentId').value })
-            });
-            const data = await res.json();
-            const resDiv = document.getElementById('lookup-result');
-            if (!res.ok) { alert(data.error); resDiv.classList.add('hidden'); return; }
-            resDiv.classList.remove('hidden');
-            resDiv.innerHTML = `
-                <div class="bg-purple-50 p-4 rounded border border-purple-200">
-                    <h3 class="text-lg font-bold text-purple-900 mb-2">${data.fullName} - MSSV: ${data.studentId}</h3>
-                    <div class="space-y-2 text-sm">
-                        <p><b>Số buổi TN (${data.activityCount}):</b> ${(data.activities || []).map(a => `${a.jobContent} (${a.date})`).join(', ') || 'Chưa có'}</p>
-                        <p><b>Chiến dịch (${data.campaignCount}):</b> ${(data.campaigns || []).map(c => c.campaignName || c).join(', ') || 'Chưa có'}</p>
-                        <p class="text-red-700"><b>Vi phạm (${data.violationCount}):</b> ${(data.violations || []).map(v => `${v.error} (${v.date})`).join(', ') || 'Không có'}</p>
+                        <!-- Ghi chú chung -->
+                        <div class="tab-pane fade" id="notes-pane" role="tabpanel">
+                            <div class="card p-3 mb-3">
+                                <form id="noteForm" class="row g-2">
+                                    <div class="col-md-10"><input type="text" class="form-control" id="noteContent" placeholder="Nội dung ghi chú..." required></div>
+                                    <div class="col-md-2"><button type="submit" class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i> Thêm</button></div>
+                                </form>
+                            </div>
+                            <table class="table table-sm table-bordered bg-white">
+                                <thead><tr><th>Nội dung ghi chú</th></tr></thead>
+                                <tbody id="notesList"></tbody>
+                            </table>
+                        </div>
                     </div>
-                </div>`;
-        };
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        async function unlockSummaryTable() {
-            const pass = document.getElementById('summary-admin-pass').value.trim();
-            if (!pass) return alert('Vui lòng nhập mật khẩu Admin!');
-            currentAdminPass = pass;
-            await loadDataFromMemory();
-        }
-
-        async function loadDataFromMemory() {
-            try {
-                const res = await fetch('/api/volunteers', { headers: { 'x-admin-password': currentAdminPass } });
-                if (!res.ok) return alert('Mật khẩu Admin sai!');
-                
-                rawVolunteersData = await res.json();
-
-                document.getElementById('admin-lock-box').classList.add('hidden');
-                document.getElementById('summary-content').classList.remove('hidden');
-                document.getElementById('admin-actions-bar').classList.remove('hidden');
-
-                renderAllTables(rawVolunteersData);
-            } catch (err) {
-                alert("Lỗi tải dữ liệu: " + err.message);
-            }
-        }
-
-        // CHỨC NĂNG KHÔI PHỤC DỮ LIỆU TỪ TURSO VỀ BỘ NHỚ TẠM
-        async function restoreFromTurso() {
-            if (!confirm('Khôi phục toàn bộ dữ liệu từ Turso vào bộ nhớ tạm?')) return;
-            try {
-                const res = await fetch('/api/volunteers/restore-from-turso', {
-                    method: 'POST',
-                    headers: { 'x-admin-password': currentAdminPass }
-                });
-                const data = await res.json();
-                alert(data.message || data.error);
-                if (res.ok) {
-                    await loadDataFromMemory();
-                }
-            } catch (err) {
-                alert("Lỗi khôi phục: " + err.message);
-            }
-        }
-
-        function renderAllTables(data) {
-            if (!Array.isArray(data)) data = [];
-
-            const pendingList = data.filter(v => Number(v.isApproved) === 0);
-            const approvedList = data.filter(v => Number(v.isApproved) === 1);
-
-            // Bảng Chờ Duyệt
-            const pendingTbody = document.getElementById('pending-tbody');
-            if (pendingList.length > 0) {
-                pendingTbody.innerHTML = pendingList.map(v => `
-                    <tr class="hover:bg-amber-100">
-                        <td class="p-2 font-bold text-slate-800 text-left">${v.fullName}</td>
-                        <td class="p-2 font-semibold text-slate-700">${v.studentId}</td>
-                        <td class="p-2 text-slate-500">${v.createdAt ? new Date(v.createdAt).toLocaleString('vi-VN') : 'Mới tạo'}</td>
-                        <td class="p-2 space-x-2">
-                            <button onclick="approveRecord(${v.id})" class="bg-emerald-600 text-white px-3 py-1 rounded font-bold hover:bg-emerald-700 shadow-sm">✅ Duyệt</button>
-                            <button onclick="deleteVolunteerRecord(${v.id})" class="bg-red-600 text-white px-3 py-1 rounded font-bold hover:bg-red-700 shadow-sm">❌ Xóa</button>
-                        </td>
-                    </tr>`).join('');
-            } else {
-                pendingTbody.innerHTML = `<tr><td colspan="4" class="p-3 text-slate-400 italic">Hiện không có hồ sơ nào chờ duyệt trong bộ nhớ tạm. (Hãy nhấn 'Khôi Phục Dữ Liệu Từ Turso' nếu cần)</td></tr>`;
-            }
-
-            // Bảng Tổng Kết Chi Tiết
-            const summaryTbody = document.getElementById('summary-tbody');
-            if (approvedList.length === 0) {
-                summaryTbody.innerHTML = `<tr><td colspan="14" class="p-4 text-center text-slate-500 font-medium">Chưa có hồ sơ nào được duyệt trong bộ nhớ tạm.</td></tr>`;
-                return;
-            }
-
-            summaryTbody.innerHTML = approvedList.map((v, i) => `
-                <tr class="hover:bg-slate-50">
-                    <td class="p-2 font-bold">${i + 1}</td>
-                    <td class="p-2 font-semibold text-left">${v.fullName}</td>
-                    <td class="p-2">${v.studentId}</td>
-                    <td class="p-2 text-left">${(v.activities || []).map(a => `<div>${a.jobContent}</div>`).join('') || '-'}</td>
-                    <td class="p-2">${(v.activities || []).map(a => `<div>${a.date}</div>`).join('') || '-'}</td>
-                    <td class="p-2 font-bold text-blue-700">${(v.activities || []).length}</td>
-                    <td class="p-2 text-left text-red-700">${(v.violations || []).map(vl => `<div>${vl.error}</div>`).join('') || '-'}</td>
-                    <td class="p-2 text-red-700">${(v.violations || []).map(vl => `<div>${vl.date}</div>`).join('') || '-'}</td>
-                    <td class="p-2 font-bold text-red-700">${(v.violations || []).length}</td>
-                    <td class="p-2 text-left text-emerald-700">${(v.campaigns || []).map(c => `<div>${c.campaignName || c}</div>`).join('') || '-'}</td>
-                    <td class="p-2 text-left text-emerald-700">${(v.achievements || []).map(a => `<div>${a.content || a}</div>`).join('') || '-'}</td>
-                    <td class="p-2 font-bold text-emerald-700">${(v.campaigns || []).length}</td>
-                    <td class="p-2 text-left text-slate-600">${(v.generalNotes || []).map(n => `<div>${n.content || n}</div>`).join('') || '-'}</td>
-                    <td class="p-2"><button onclick="deleteVolunteerRecord(${v.id})" class="bg-red-600 text-white p-1 rounded font-bold text-xs">🗑️</button></td>
-                </tr>`).join('');
-        }
-
-        async function approveRecord(id) {
-            const res = await fetch(`/api/volunteers/${id}/approve`, { method: 'POST', headers: { 'x-admin-password': currentAdminPass } });
-            const data = await res.json();
-            alert(data.message || data.error);
-            if (res.ok) loadDataFromMemory();
-        }
-
-        async function deleteVolunteerRecord(id) {
-            if (!confirm('Bạn có chắc chắn muốn xóa hồ sơ này?')) return;
-            const res = await fetch(`/api/volunteers/${id}`, { method: 'DELETE', headers: { 'x-admin-password': currentAdminPass } });
-            const data = await res.json();
-            alert(data.message || data.error);
-            if (res.ok) loadDataFromMemory();
-        }
-
-        function exportToExcel() {
-            const approvedData = rawVolunteersData.filter(v => Number(v.isApproved) === 1);
-            const exportRows = approvedData.map((v, i) => ({
-                "STT": i + 1, "Họ tên": v.fullName, "MSSV": v.studentId, "Số buổi TN": (v.activities || []).length
-            }));
-            const worksheet = XLSX.utils.json_to_sheet(exportRows);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "TongKet");
-            XLSX.writeFile(workbook, "TongKet.xlsx");
-        }
-    </script>
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- App Logic -->
+    <script src="app.js"></script>
 </body>
 </html>
