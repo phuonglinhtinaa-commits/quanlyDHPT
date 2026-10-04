@@ -69,6 +69,15 @@ async function tursoQuery(sql, args = []) {
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Header cấm cache dữ liệu
+app.use((req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 function verifyAdmin(req, res, next) {
@@ -268,51 +277,6 @@ app.delete('/api/volunteers/:id', verifyAdmin, async (req, res) => {
         await tursoQuery(`DELETE FROM achievements WHERE volunteerId = ?`, [vId]);
         await tursoQuery(`DELETE FROM general_notes WHERE volunteerId = ?`, [vId]);
         res.json({ message: 'Đã xóa hồ sơ!' });
-    } catch (e) {
-        res.status(500).json({ error: 'Lỗi xóa!' });
-    }
-});
-
-app.delete('/api/items/activity/:id', verifyAdmin, async (req, res) => {
-    try {
-        await tursoQuery(`DELETE FROM activities WHERE id = ?`, [Number(req.params.id)]);
-        res.json({ message: 'Đã xóa!' });
-    } catch (e) {
-        res.status(500).json({ error: 'Lỗi xóa!' });
-    }
-});
-
-app.delete('/api/items/violation/:id', verifyAdmin, async (req, res) => {
-    try {
-        await tursoQuery(`DELETE FROM violations WHERE id = ?`, [Number(req.params.id)]);
-        res.json({ message: 'Đã xóa!' });
-    } catch (e) {
-        res.status(500).json({ error: 'Lỗi xóa!' });
-    }
-});
-
-app.delete('/api/items/campaign/:id', verifyAdmin, async (req, res) => {
-    try {
-        await tursoQuery(`DELETE FROM campaigns WHERE id = ?`, [Number(req.params.id)]);
-        res.json({ message: 'Đã xóa!' });
-    } catch (e) {
-        res.status(500).json({ error: 'Lỗi xóa!' });
-    }
-});
-
-app.delete('/api/items/achievement/:id', verifyAdmin, async (req, res) => {
-    try {
-        await tursoQuery(`DELETE FROM achievements WHERE id = ?`, [Number(req.params.id)]);
-        res.json({ message: 'Đã xóa!' });
-    } catch (e) {
-        res.status(500).json({ error: 'Lỗi xóa!' });
-    }
-});
-
-app.delete('/api/items/note/:id', verifyAdmin, async (req, res) => {
-    try {
-        await tursoQuery(`DELETE FROM general_notes WHERE id = ?`, [Number(req.params.id)]);
-        res.json({ message: 'Đã xóa!' });
     } catch (e) {
         res.status(500).json({ error: 'Lỗi xóa!' });
     }
