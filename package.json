@@ -1,7 +1,7 @@
 {
   "name": "quan-ly-tnv",
   "version": "1.0.0",
-  "description": "Hệ thống quản lý tình nguyện viên sử dụng Google Sheets API",
+  "description": "Quản lý TNV dùng Google Sheets làm database",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
