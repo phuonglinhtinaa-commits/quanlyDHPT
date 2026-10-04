@@ -5,7 +5,6 @@ document.addEventListener('DOMContentLoaded', () => {
     detailModal = new bootstrap.Modal(document.getElementById('detailModal'));
     syncDataFromCloud();
 
-    // Form Đăng ký TNV
     document.getElementById('registerForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const fullName = document.getElementById('fullName').value.trim();
@@ -30,7 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Các form chi tiết con trong Modal
     document.getElementById('activityForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const id = document.getElementById('currentModalTnvId').value;
@@ -69,7 +67,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// Tải toàn bộ dữ liệu từ Google Sheets qua backend
 async function syncDataFromCloud() {
     try {
         const res = await fetch('/api/volunteers/restore-from-turso');
@@ -136,7 +133,6 @@ async function toggleApprove(id, isApproved) {
             body: JSON.stringify({ isApproved })
         });
         syncDataFromCloud();
-        // Nếu modal đang mở đúng TNV đó thì cập nhật lại modal luôn
         const currentModalId = document.getElementById('currentModalTnvId').value;
         if (currentModalId == id) openDetail(id);
     } catch (err) {
@@ -155,7 +151,6 @@ async function deleteVolunteer(id) {
     }
 }
 
-// Mở Modal chi tiết
 function openDetail(id) {
     const v = volunteersData.find(item => item.id == id);
     if (!v) return;
@@ -163,7 +158,6 @@ function openDetail(id) {
     document.getElementById('currentModalTnvId').value = v.id;
     document.getElementById('modalTnvName').innerText = `${v.fullName} (${v.studentId})`;
 
-    // Render các bảng con
     document.getElementById('activitiesList').innerHTML = v.activities.map(a => `<tr><td>${a.jobContent}</td><td>${a.date}</td></tr>`).join('') || '<tr><td colspan="2" class="text-muted">Chưa có dữ liệu</td></tr>';
     document.getElementById('campaignsList').innerHTML = v.campaigns.map(c => `<tr><td>${c.campaignName}</td></tr>`).join('') || '<tr><td class="text-muted">Chưa có dữ liệu</td></tr>';
     document.getElementById('violationsList').innerHTML = v.violations.map(vi => `<tr><td>${vi.error}</td><td>${vi.date}</td></tr>`).join('') || '<tr><td colspan="2" class="text-muted">Chưa có dữ liệu</td></tr>';
@@ -182,7 +176,6 @@ async function postSubData(volunteerId, endpoint, payload, formId) {
         });
         if (res.ok) {
             document.getElementById(formId).reset();
-            // Lấy lại dữ liệu mới nhất từ cloud rồi update lại modal
             const refreshRes = await fetch('/api/volunteers/restore-from-turso');
             const json = await refreshRes.json();
             if (json.success) {
