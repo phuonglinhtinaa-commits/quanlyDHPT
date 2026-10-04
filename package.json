@@ -1,11 +1,13 @@
 {
-  "name": "quanlydhpt",
+  "name": "quan-ly-tnv",
   "version": "1.0.0",
+  "description": "Hệ thống quản lý Tình nguyện viên",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
+    "@libsql/client": "^0.6.2",
     "cors": "^2.8.5",
     "express": "^4.18.2"
   }
