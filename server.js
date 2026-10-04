@@ -14,16 +14,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 // --- KHỞI TẠO TURSO CLIENT ---
 let turso = null;
 try {
-    let dbUrl = (process.env.TURSO_DATABASE_URL || '').trim();
+    const dbUrl = (process.env.TURSO_DATABASE_URL || '').trim();
     const dbToken = (process.env.TURSO_AUTH_TOKEN || '').trim();
-
-    if (dbUrl.startsWith('libsql://')) {
-        dbUrl = dbUrl.replace('libsql://', 'https://');
-    } else if (dbUrl.startsWith('wss://')) {
-        dbUrl = dbUrl.replace('wss://', 'https://');
-    } else if (!dbUrl.startsWith('http://') && !dbUrl.startsWith('https://')) {
-        dbUrl = 'https://' + dbUrl;
-    }
 
     if (dbUrl && dbToken) {
         turso = createClient({
