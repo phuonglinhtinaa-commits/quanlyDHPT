@@ -1,12 +1,13 @@
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
+const { createClient } = require('@libsql/client');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = 'OPTC140921';
 
-// --- BỘ NHỚ TẠM (IN-MEMORY DATABASE) ---
+// --- BỘ NHỚ TẠM (RAM) ---
 let memoryData = {
     volunteers: [],
     activities: [],
@@ -17,74 +18,44 @@ let memoryData = {
     autoIncId: 1
 };
 
-// Cấu hình Turso
-let rawUrl = (process.env.TURSO_DATABASE_URL || '').trim();
-if (rawUrl.startsWith('libsql://')) {
-    rawUrl = rawUrl.replace('libsql://', 'https://');
-}
-const TURSO_URL = rawUrl;
-const TURSO_TOKEN = (process.env.TURSO_AUTH_TOKEN || '').trim();
+// --- KHỞI TẠO TURSO CLIENT CHÍNH THỨC ---
+let turso = null;
+try {
+    let dbUrl = (process.env.TURSO_DATABASE_URL || '').trim();
+    const dbToken = (process.env.TURSO_AUTH_TOKEN || '').trim();
 
-function parseTursoCell(cell) {
-    if (cell === null || cell === undefined) return null;
-    if (typeof cell === 'object') {
-        if (cell.type === 'null') return null;
-        if (cell.value !== undefined) return cell.value;
-    }
-    return cell;
-}
-
-// Truy vấn Turso có Log lỗi chi tiết
-async function tursoQuery(sql, args = []) {
-    if (!TURSO_URL || !TURSO_TOKEN) {
-        console.error("❌ LỖI: Thiếu biến môi trường TURSO_DATABASE_URL hoặc TURSO_AUTH_TOKEN trên Render!");
-        return { rows: [] };
-    }
-    const formattedArgs = args.map(val => {
-        if (val === null || val === undefined) return { type: 'null' };
-        if (typeof val === 'number') return { type: 'integer', value: val.toString() };
-        return { type: 'text', value: val.toString() };
-    });
-
-    try {
-        const response = await fetch(`${TURSO_URL}/v2/pipeline`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${TURSO_TOKEN}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                requests: [
-                    { type: 'execute', stmt: { sql, args: formattedArgs } },
-                    { type: 'close' }
-                ]
-            })
-        });
-
-        const data = await response.json();
-        if (!response.ok || data.batched_results?.[0]?.type === 'error') {
-            console.error("❌ Turso Response Error:", JSON.stringify(data));
-            return { rows: [] };
+    if (dbUrl && dbToken) {
+        if (dbUrl.startsWith('https://')) {
+            dbUrl = dbUrl.replace('https://', 'libsql://');
         }
+        turso = createClient({
+            url: dbUrl,
+            authToken: dbToken
+        });
+        console.log("⚡ [TURSO] Khởi tạo SDK Turso thành công!");
+    } else {
+        console.error("❌ [TURSO] Thiếu TURSO_DATABASE_URL hoặc TURSO_AUTH_TOKEN!");
+    }
+} catch (err) {
+    console.error("❌ [TURSO] Lỗi kết nối CSDL:", err.message);
+}
 
-        const result = data.batched_results?.[0]?.response?.result;
-        if (!result || !result.cols || !result.rows) return { rows: [] };
-
-        const cols = result.cols.map(c => c.name);
-        return {
-            rows: result.rows.map(row => {
-                let obj = {};
-                row.forEach((cell, idx) => { obj[cols[idx]] = parseTursoCell(cell); });
-                return obj;
-            })
-        };
+// Hàm thực thi SQL an toàn qua SDK
+async function tursoQuery(sql, args = []) {
+    if (!turso) {
+        console.error("⚠️ [TURSO] Bỏ qua query vì chưa kết nối được Turso!");
+        return { rows: [] };
+    }
+    try {
+        const result = await turso.execute({ sql, args });
+        return { rows: result.rows || [] };
     } catch (e) {
-        console.error("❌ Lỗi Fetch Turso Query:", e.message);
+        console.error(`❌ [TURSO ERROR] Lỗi SQL (${sql}):`, e.message);
         return { rows: [] };
     }
 }
 
-// Khởi tạo bảng Turso tự động
+// Tạo đủ 6 bảng trên Turso nếu chưa có
 async function ensureTursoTables() {
     const tables = [
         `CREATE TABLE IF NOT EXISTS volunteers (id INTEGER PRIMARY KEY, fullName TEXT, studentId TEXT, isApproved INTEGER DEFAULT 0, createdAt TEXT)`,
@@ -122,7 +93,6 @@ function normalizeString(str) {
     return str.toString().trim().toLowerCase();
 }
 
-// Tìm TNV trong RAM: Yêu cầu trùng khớp chính xác MSSV và Họ tên
 function findVolunteerInMemory(fullName, studentId) {
     const cleanName = normalizeString(fullName);
     const cleanId = normalizeString(studentId);
@@ -135,7 +105,7 @@ function findVolunteerInMemory(fullName, studentId) {
 
 // --- API ROUTES ---
 
-// 1. Khởi tạo TNV mới
+// 1. Đăng ký TNV
 app.post('/api/volunteers/register', async (req, res) => {
     const { fullName, studentId } = req.body;
     if (!fullName || !studentId) return res.status(400).json({ error: 'Nhập đủ Họ tên và MSSV!' });
@@ -148,15 +118,17 @@ app.post('/api/volunteers/register', async (req, res) => {
     const createdAt = new Date().toISOString();
     const newVol = { id: newId, fullName: fullName.trim(), studentId: studentId.trim(), isApproved: 0, createdAt };
 
+    // 1. Lưu RAM
     memoryData.volunteers.push(newVol);
 
+    // 2. Lưu Turso
     await ensureTursoTables();
-    tursoQuery(`INSERT INTO volunteers (id, fullName, studentId, isApproved, createdAt) VALUES (?, ?, ?, 0, ?)`, [newId, fullName.trim(), studentId.trim(), createdAt]);
+    await tursoQuery(`INSERT INTO volunteers (id, fullName, studentId, isApproved, createdAt) VALUES (?, ?, ?, 0, ?)`, [newId, fullName.trim(), studentId.trim(), createdAt]);
 
     res.json({ message: 'Đăng ký khởi tạo thành công! Vui lòng chờ Admin duyệt.' });
 });
 
-// 2. Điền buổi TN
+// 2. Thêm buổi TN
 app.post('/api/volunteers/activity', async (req, res) => {
     const { fullName, studentId, jobContent, date } = req.body;
     const vol = findVolunteerInMemory(fullName, studentId);
@@ -169,12 +141,12 @@ app.post('/api/volunteers/activity', async (req, res) => {
     memoryData.activities.push(newAct);
     
     await ensureTursoTables();
-    tursoQuery(`INSERT INTO activities (id, volunteerId, jobContent, date, createdAt) VALUES (?, ?, ?, ?, ?)`, [actId, vol.id, jobContent.trim(), date, createdAt]);
+    await tursoQuery(`INSERT INTO activities (id, volunteerId, jobContent, date, createdAt) VALUES (?, ?, ?, ?, ?)`, [actId, vol.id, jobContent.trim(), date, createdAt]);
 
     res.json({ message: 'Thêm buổi tình nguyện thành công!' });
 });
 
-// 3. Điền chiến dịch
+// 3. Thêm chiến dịch
 app.post('/api/volunteers/campaign', async (req, res) => {
     const { fullName, studentId, campaignName } = req.body;
     const vol = findVolunteerInMemory(fullName, studentId);
@@ -187,12 +159,12 @@ app.post('/api/volunteers/campaign', async (req, res) => {
     memoryData.campaigns.push(newCamp);
 
     await ensureTursoTables();
-    tursoQuery(`INSERT INTO campaigns (id, volunteerId, campaignName, createdAt) VALUES (?, ?, ?, ?)`, [cId, vol.id, campaignName.trim(), createdAt]);
+    await tursoQuery(`INSERT INTO campaigns (id, volunteerId, campaignName, createdAt) VALUES (?, ?, ?, ?)`, [cId, vol.id, campaignName.trim(), createdAt]);
 
     res.json({ message: 'Ghi nhận chiến dịch thành công!' });
 });
 
-// 4. Thêm thông tin bổ sung
+// 4. Thông tin bổ sung
 app.post('/api/volunteers/additional-info', verifyAdmin, async (req, res) => {
     const { fullName, studentId, category, violationError, violationDate, achievementContent, noteContent } = req.body;
     const vol = findVolunteerInMemory(fullName, studentId);
@@ -205,15 +177,15 @@ app.post('/api/volunteers/additional-info', verifyAdmin, async (req, res) => {
 
     if (category === 'violation') {
         memoryData.violations.push({ id: itemId, volunteerId: vol.id, error: violationError.trim(), date: violationDate, createdAt });
-        tursoQuery(`INSERT INTO violations (id, volunteerId, error, date, createdAt) VALUES (?, ?, ?, ?, ?)`, [itemId, vol.id, violationError.trim(), violationDate, createdAt]);
+        await tursoQuery(`INSERT INTO violations (id, volunteerId, error, date, createdAt) VALUES (?, ?, ?, ?, ?)`, [itemId, vol.id, violationError.trim(), violationDate, createdAt]);
         return res.json({ message: 'Cập nhật vi phạm thành công!' });
     } else if (category === 'achievement') {
         memoryData.achievements.push({ id: itemId, volunteerId: vol.id, content: achievementContent.trim(), createdAt });
-        tursoQuery(`INSERT INTO achievements (id, volunteerId, content, createdAt) VALUES (?, ?, ?, ?)`, [itemId, vol.id, achievementContent.trim(), createdAt]);
+        await tursoQuery(`INSERT INTO achievements (id, volunteerId, content, createdAt) VALUES (?, ?, ?, ?)`, [itemId, vol.id, achievementContent.trim(), createdAt]);
         return res.json({ message: 'Cập nhật thành tích thành công!' });
     } else if (category === 'note') {
         memoryData.general_notes.push({ id: itemId, volunteerId: vol.id, content: noteContent.trim(), createdAt });
-        tursoQuery(`INSERT INTO general_notes (id, volunteerId, content, createdAt) VALUES (?, ?, ?, ?)`, [itemId, vol.id, noteContent.trim(), createdAt]);
+        await tursoQuery(`INSERT INTO general_notes (id, volunteerId, content, createdAt) VALUES (?, ?, ?, ?)`, [itemId, vol.id, noteContent.trim(), createdAt]);
         return res.json({ message: 'Cập nhật ghi chú thành công!' });
     }
 });
@@ -241,7 +213,7 @@ app.post('/api/volunteers/my-profile', async (req, res) => {
     });
 });
 
-// 6. Bảng tổng kết Admin (Tải cực nhanh từ RAM)
+// 6. Bảng tổng kết Admin
 app.get('/api/volunteers', verifyAdmin, (req, res) => {
     const result = memoryData.volunteers.map(v => {
         const acts = memoryData.activities.filter(a => a.volunteerId === v.id);
@@ -268,17 +240,17 @@ app.get('/api/volunteers', verifyAdmin, (req, res) => {
 });
 
 // 7. Duyệt hồ sơ
-app.post('/api/volunteers/:id/approve', verifyAdmin, (req, res) => {
+app.post('/api/volunteers/:id/approve', verifyAdmin, async (req, res) => {
     const vId = Number(req.params.id);
     const vol = memoryData.volunteers.find(v => v.id === vId);
     if (vol) vol.isApproved = 1;
 
-    tursoQuery(`UPDATE volunteers SET isApproved = 1 WHERE id = ?`, [vId]);
+    await tursoQuery(`UPDATE volunteers SET isApproved = 1 WHERE id = ?`, [vId]);
     res.json({ message: 'Đã duyệt thành công!' });
 });
 
 // 8. Xóa hồ sơ
-app.delete('/api/volunteers/:id', verifyAdmin, (req, res) => {
+app.delete('/api/volunteers/:id', verifyAdmin, async (req, res) => {
     const vId = Number(req.params.id);
     memoryData.volunteers = memoryData.volunteers.filter(v => v.id !== vId);
     memoryData.activities = memoryData.activities.filter(a => a.volunteerId !== vId);
@@ -287,17 +259,17 @@ app.delete('/api/volunteers/:id', verifyAdmin, (req, res) => {
     memoryData.achievements = memoryData.achievements.filter(a => a.volunteerId !== vId);
     memoryData.general_notes = memoryData.general_notes.filter(n => n.volunteerId !== vId);
 
-    tursoQuery(`DELETE FROM volunteers WHERE id = ?`, [vId]);
-    tursoQuery(`DELETE FROM activities WHERE volunteerId = ?`, [vId]);
-    tursoQuery(`DELETE FROM campaigns WHERE volunteerId = ?`, [vId]);
-    tursoQuery(`DELETE FROM violations WHERE volunteerId = ?`, [vId]);
-    tursoQuery(`DELETE FROM achievements WHERE volunteerId = ?`, [vId]);
-    tursoQuery(`DELETE FROM general_notes WHERE volunteerId = ?`, [vId]);
+    await tursoQuery(`DELETE FROM volunteers WHERE id = ?`, [vId]);
+    await tursoQuery(`DELETE FROM activities WHERE volunteerId = ?`, [vId]);
+    await tursoQuery(`DELETE FROM campaigns WHERE volunteerId = ?`, [vId]);
+    await tursoQuery(`DELETE FROM violations WHERE volunteerId = ?`, [vId]);
+    await tursoQuery(`DELETE FROM achievements WHERE volunteerId = ?`, [vId]);
+    await tursoQuery(`DELETE FROM general_notes WHERE volunteerId = ?`, [vId]);
 
     res.json({ message: 'Đã xóa hồ sơ!' });
 });
 
-// 9. NÚT KHÔI PHỤC: Kéo dữ liệu từ Turso nạp đè vào RAM
+// 9. KHÔI PHỤC DỮ LIỆU TỪ TURSO VỀ RAM
 app.post('/api/volunteers/restore-from-turso', verifyAdmin, async (req, res) => {
     try {
         await ensureTursoTables();
