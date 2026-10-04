@@ -6,12 +6,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const SCRIPT_URL = process.env.GOOGLE_SCRIPT_URL;
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Hàm gọi Google Apps Script Web App
 async function callScript(payload) {
     if (!SCRIPT_URL) throw new Error("Chưa cấu hình GOOGLE_SCRIPT_URL");
     const res = await fetch(SCRIPT_URL, {
@@ -22,14 +20,12 @@ async function callScript(payload) {
     return await res.json();
 }
 
-// --- KHÔI PHỤC TOÀN BỘ DỮ LIỆU TỪ GOOGLE SHEETS ---
 app.get('/api/volunteers/restore-from-turso', async (req, res) => {
     try {
         if (!SCRIPT_URL) return res.status(500).json({ error: "Thiếu GOOGLE_SCRIPT_URL" });
         const response = await fetch(`${SCRIPT_URL}?action=restore`);
         const result = await response.json();
-        
-        if (!result.success) throw new Error("Không thể lấy dữ liệu từ Google Sheets");
+        if (!result.success) throw new Error("Lỗi đọc dữ liệu Google Sheets");
 
         const db = result.data;
         const volunteersMap = {};
@@ -51,64 +47,31 @@ app.get('/api/volunteers/restore-from-turso', async (req, res) => {
 
         db.activities.forEach(a => {
             const vId = Number(a.volunteerId);
-            if (volunteersMap[vId]) {
-                volunteersMap[vId].activities.push({
-                    id: Number(a.id),
-                    jobContent: a.jobContent,
-                    date: a.date
-                });
-            }
+            if (volunteersMap[vId]) volunteersMap[vId].activities.push({ id: Number(a.id), jobContent: a.jobContent, date: a.date });
         });
-
         db.campaigns.forEach(c => {
             const vId = Number(c.volunteerId);
-            if (volunteersMap[vId]) {
-                volunteersMap[vId].campaigns.push({
-                    id: Number(c.id),
-                    campaignName: c.campaignName
-                });
-            }
+            if (volunteersMap[vId]) volunteersMap[vId].campaigns.push({ id: Number(c.id), campaignName: c.campaignName });
         });
-
         db.violations.forEach(vi => {
             const vId = Number(vi.volunteerId);
-            if (volunteersMap[vId]) {
-                volunteersMap[vId].violations.push({
-                    id: Number(vi.id),
-                    error: vi.error,
-                    date: vi.date
-                });
-            }
+            if (volunteersMap[vId]) volunteersMap[vId].violations.push({ id: Number(vi.id), error: vi.error, date: vi.date });
         });
-
         db.achievements.forEach(ac => {
             const vId = Number(ac.volunteerId);
-            if (volunteersMap[vId]) {
-                volunteersMap[vId].achievements.push({
-                    id: Number(ac.id),
-                    content: ac.content
-                });
-            }
+            if (volunteersMap[vId]) volunteersMap[vId].achievements.push({ id: Number(ac.id), content: ac.content });
         });
-
         db.general_notes.forEach(g => {
             const vId = Number(g.volunteerId);
-            if (volunteersMap[vId]) {
-                volunteersMap[vId].generalNotes.push({
-                    id: Number(g.id),
-                    content: g.content
-                });
-            }
+            if (volunteersMap[vId]) volunteersMap[vId].generalNotes.push({ id: Number(g.id), content: g.content });
         });
 
         res.json({ success: true, data: Object.values(volunteersMap) });
     } catch (err) {
-        console.error("Lỗi restore Google Sheets:", err);
         res.status(500).json({ error: err.message });
     }
 });
 
-// --- LẤY DANH SÁCH TÌNH NGUYỆN VIÊN ---
 app.get('/api/volunteers', async (req, res) => {
     try {
         if (!SCRIPT_URL) return res.json([]);
@@ -130,12 +93,9 @@ app.get('/api/volunteers', async (req, res) => {
     }
 });
 
-// --- ĐĂNG KÝ TÌNH NGUYỆN VIÊN MỚI ---
 app.post('/api/volunteers/register', async (req, res) => {
     const { fullName, studentId } = req.body;
-    if (!fullName || !studentId) {
-        return res.status(400).json({ error: "Thiếu Họ tên hoặc MSSV" });
-    }
+    if (!fullName || !studentId) return res.status(400).json({ error: "Thiếu Họ tên hoặc MSSV" });
     try {
         const result = await callScript({ action: 'register', fullName, studentId });
         res.json({ id: result.id, fullName, studentId, isApproved: false, createdAt: result.createdAt });
@@ -144,7 +104,6 @@ app.post('/api/volunteers/register', async (req, res) => {
     }
 });
 
-// --- PHÊ DUYỆT / HUỶ DUYỆT ---
 app.put('/api/volunteers/:id/approve', async (req, res) => {
     const { id } = req.params;
     const { isApproved } = req.body;
@@ -156,7 +115,6 @@ app.put('/api/volunteers/:id/approve', async (req, res) => {
     }
 });
 
-// --- XÓA TÌNH NGUYỆN VIÊN ---
 app.delete('/api/volunteers/:id', async (req, res) => {
     const { id } = req.params;
     try {
@@ -167,7 +125,6 @@ app.delete('/api/volunteers/:id', async (req, res) => {
     }
 });
 
-// --- THÊM DỮ LIỆU CON (HOẠT ĐỘNG, CHIẾN DỊCH, VI PHẠM, THÀNH TÍCH, GHI CHÚ) ---
 app.post('/api/volunteers/:id/activities', async (req, res) => {
     const { id } = req.params;
     const { jobContent, date } = req.body;
@@ -213,7 +170,6 @@ app.post('/api/volunteers/:id/general_notes', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- FALLBACK CLIENT ---
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
