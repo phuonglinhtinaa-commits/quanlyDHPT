@@ -11,7 +11,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Hàm phụ trợ gọi Google Apps Script qua HTTP POST/GET
+// Hàm gọi Google Apps Script Web App
 async function callScript(payload) {
     if (!SCRIPT_URL) throw new Error("Chưa cấu hình GOOGLE_SCRIPT_URL");
     const res = await fetch(SCRIPT_URL, {
@@ -22,7 +22,7 @@ async function callScript(payload) {
     return await res.json();
 }
 
-// --- KHÔI PHỤC DỮ LIỆU ---
+// --- KHÔI PHỤC TOÀN BỘ DỮ LIỆU TỪ GOOGLE SHEETS ---
 app.get('/api/volunteers/restore-from-turso', async (req, res) => {
     try {
         if (!SCRIPT_URL) return res.status(500).json({ error: "Thiếu GOOGLE_SCRIPT_URL" });
@@ -51,23 +51,54 @@ app.get('/api/volunteers/restore-from-turso', async (req, res) => {
 
         db.activities.forEach(a => {
             const vId = Number(a.volunteerId);
-            if (volunteersMap[vId]) volunteersMap[vId].activities.push({ id: Number(a.id), jobContent: a.jobContent, date: a.date });
+            if (volunteersMap[vId]) {
+                volunteersMap[vId].activities.push({
+                    id: Number(a.id),
+                    jobContent: a.jobContent,
+                    date: a.date
+                });
+            }
         });
+
         db.campaigns.forEach(c => {
             const vId = Number(c.volunteerId);
-            if (volunteersMap[vId]) volunteersMap[vId].campaigns.push({ id: Number(c.id), campaignName: c.campaignName });
+            if (volunteersMap[vId]) {
+                volunteersMap[vId].campaigns.push({
+                    id: Number(c.id),
+                    campaignName: c.campaignName
+                });
+            }
         });
+
         db.violations.forEach(vi => {
             const vId = Number(vi.volunteerId);
-            if (volunteersMap[vId]) volunteersMap[vId].violations.push({ id: Number(vi.id), error: vi.error, date: vi.date });
+            if (volunteersMap[vId]) {
+                volunteersMap[vId].violations.push({
+                    id: Number(vi.id),
+                    error: vi.error,
+                    date: vi.date
+                });
+            }
         });
+
         db.achievements.forEach(ac => {
             const vId = Number(ac.volunteerId);
-            if (volunteersMap[vId]) volunteersMap[vId].achievements.push({ id: Number(ac.id), content: ac.content });
+            if (volunteersMap[vId]) {
+                volunteersMap[vId].achievements.push({
+                    id: Number(ac.id),
+                    content: ac.content
+                });
+            }
         });
+
         db.general_notes.forEach(g => {
             const vId = Number(g.volunteerId);
-            if (volunteersMap[vId]) volunteersMap[vId].generalNotes.push({ id: Number(g.id), content: g.content });
+            if (volunteersMap[vId]) {
+                volunteersMap[vId].generalNotes.push({
+                    id: Number(g.id),
+                    content: g.content
+                });
+            }
         });
 
         res.json({ success: true, data: Object.values(volunteersMap) });
@@ -136,7 +167,7 @@ app.delete('/api/volunteers/:id', async (req, res) => {
     }
 });
 
-// --- THÊM DỮ LIỆU CON (HOẠT ĐỘNG, VI PHẠM, ...) ---
+// --- THÊM DỮ LIỆU CON (HOẠT ĐỘNG, CHIẾN DỊCH, VI PHẠM, THÀNH TÍCH, GHI CHÚ) ---
 app.post('/api/volunteers/:id/activities', async (req, res) => {
     const { id } = req.params;
     const { jobContent, date } = req.body;
