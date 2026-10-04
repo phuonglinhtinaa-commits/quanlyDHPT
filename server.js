@@ -34,8 +34,12 @@ function parseTursoCell(cell) {
     return cell;
 }
 
+// Truy vấn Turso có Log lỗi chi tiết
 async function tursoQuery(sql, args = []) {
-    if (!TURSO_URL || !TURSO_TOKEN) return { rows: [] };
+    if (!TURSO_URL || !TURSO_TOKEN) {
+        console.error("❌ LỖI: Thiếu biến môi trường TURSO_DATABASE_URL hoặc TURSO_AUTH_TOKEN trên Render!");
+        return { rows: [] };
+    }
     const formattedArgs = args.map(val => {
         if (val === null || val === undefined) return { type: 'null' };
         if (typeof val === 'number') return { type: 'integer', value: val.toString() };
@@ -59,6 +63,7 @@ async function tursoQuery(sql, args = []) {
 
         const data = await response.json();
         if (!response.ok || data.batched_results?.[0]?.type === 'error') {
+            console.error("❌ Turso Response Error:", JSON.stringify(data));
             return { rows: [] };
         }
 
@@ -74,10 +79,12 @@ async function tursoQuery(sql, args = []) {
             })
         };
     } catch (e) {
+        console.error("❌ Lỗi Fetch Turso Query:", e.message);
         return { rows: [] };
     }
 }
 
+// Khởi tạo bảng Turso tự động
 async function ensureTursoTables() {
     const tables = [
         `CREATE TABLE IF NOT EXISTS volunteers (id INTEGER PRIMARY KEY, fullName TEXT, studentId TEXT, isApproved INTEGER DEFAULT 0, createdAt TEXT)`,
@@ -115,19 +122,20 @@ function normalizeString(str) {
     return str.toString().trim().toLowerCase();
 }
 
+// Tìm TNV trong RAM: Yêu cầu trùng khớp chính xác MSSV và Họ tên
 function findVolunteerInMemory(fullName, studentId) {
     const cleanName = normalizeString(fullName);
     const cleanId = normalizeString(studentId);
     return memoryData.volunteers.find(v => {
         const matchId = cleanId && normalizeString(v.studentId) === cleanId;
         const matchName = cleanName && normalizeString(v.fullName) === cleanName;
-        return matchId || matchName;
+        return (cleanId && matchId) || (matchId && matchName);
     });
 }
 
 // --- API ROUTES ---
 
-// 1. Đăng ký TNV mới
+// 1. Khởi tạo TNV mới
 app.post('/api/volunteers/register', async (req, res) => {
     const { fullName, studentId } = req.body;
     if (!fullName || !studentId) return res.status(400).json({ error: 'Nhập đủ Họ tên và MSSV!' });
@@ -148,7 +156,7 @@ app.post('/api/volunteers/register', async (req, res) => {
     res.json({ message: 'Đăng ký khởi tạo thành công! Vui lòng chờ Admin duyệt.' });
 });
 
-// 2. Ghi nhận buổi TN
+// 2. Điền buổi TN
 app.post('/api/volunteers/activity', async (req, res) => {
     const { fullName, studentId, jobContent, date } = req.body;
     const vol = findVolunteerInMemory(fullName, studentId);
@@ -166,7 +174,7 @@ app.post('/api/volunteers/activity', async (req, res) => {
     res.json({ message: 'Thêm buổi tình nguyện thành công!' });
 });
 
-// 3. Ghi nhận chiến dịch
+// 3. Điền chiến dịch
 app.post('/api/volunteers/campaign', async (req, res) => {
     const { fullName, studentId, campaignName } = req.body;
     const vol = findVolunteerInMemory(fullName, studentId);
@@ -184,7 +192,7 @@ app.post('/api/volunteers/campaign', async (req, res) => {
     res.json({ message: 'Ghi nhận chiến dịch thành công!' });
 });
 
-// 4. Thêm thông tin bổ sung (Vi phạm / Thành tích / Ghi chú)
+// 4. Thêm thông tin bổ sung
 app.post('/api/volunteers/additional-info', verifyAdmin, async (req, res) => {
     const { fullName, studentId, category, violationError, violationDate, achievementContent, noteContent } = req.body;
     const vol = findVolunteerInMemory(fullName, studentId);
@@ -233,7 +241,7 @@ app.post('/api/volunteers/my-profile', async (req, res) => {
     });
 });
 
-// 6. Lấy bảng tổng kết Admin (Đọc siêu nhanh từ bộ nhớ RAM)
+// 6. Bảng tổng kết Admin (Tải cực nhanh từ RAM)
 app.get('/api/volunteers', verifyAdmin, (req, res) => {
     const result = memoryData.volunteers.map(v => {
         const acts = memoryData.activities.filter(a => a.volunteerId === v.id);
@@ -259,7 +267,7 @@ app.get('/api/volunteers', verifyAdmin, (req, res) => {
     res.json(result);
 });
 
-// 7. Duyệt hồ sơ (Đã duyệt)
+// 7. Duyệt hồ sơ
 app.post('/api/volunteers/:id/approve', verifyAdmin, (req, res) => {
     const vId = Number(req.params.id);
     const vol = memoryData.volunteers.find(v => v.id === vId);
@@ -289,7 +297,7 @@ app.delete('/api/volunteers/:id', verifyAdmin, (req, res) => {
     res.json({ message: 'Đã xóa hồ sơ!' });
 });
 
-// 9. NÚT KHÔI PHỤC: Kéo dữ liệu từ Turso nạp đè vào Bộ Nhớ RAM
+// 9. NÚT KHÔI PHỤC: Kéo dữ liệu từ Turso nạp đè vào RAM
 app.post('/api/volunteers/restore-from-turso', verifyAdmin, async (req, res) => {
     try {
         await ensureTursoTables();
@@ -306,7 +314,6 @@ app.post('/api/volunteers/restore-from-turso', verifyAdmin, async (req, res) => 
             return res.json({ message: 'Trên Turso hiện chưa có bản ghi nào để khôi phục!' });
         }
 
-        // Chuyển đổi linh hoạt mọi kiểu dữ liệu (String/Number) về chuẩn RAM
         memoryData.volunteers = rawVols.map(r => ({
             id: Number(r.id),
             fullName: String(r.fullName || ''),
@@ -347,7 +354,6 @@ app.post('/api/volunteers/restore-from-turso', verifyAdmin, async (req, res) => 
             content: String(r.content || '')
         }));
 
-        // Cập nhật lại ID tự tăng lớn nhất
         let maxId = 0;
         const allItems = [...memoryData.volunteers, ...memoryData.activities, ...memoryData.campaigns, ...memoryData.violations, ...memoryData.achievements, ...memoryData.general_notes];
         allItems.forEach(item => { if (item.id > maxId) maxId = item.id; });
