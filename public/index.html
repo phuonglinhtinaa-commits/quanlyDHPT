@@ -15,6 +15,7 @@
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen pb-10">
+
     <header class="bg-blue-700 text-white shadow-lg">
         <div class="container mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center">
             <h1 class="text-xl font-bold uppercase tracking-wide">Hệ thống Quản lý Tình nguyện viên</h1>
@@ -23,6 +24,7 @@
     </header>
 
     <main class="container mx-auto px-4 mt-6">
+        
         <div class="flex flex-wrap gap-2 border-b border-slate-300 pb-3 mb-6">
             <button onclick="showTab('init')" id="btn-init" class="tab-btn px-4 py-2 bg-blue-700 text-white rounded font-medium shadow">0. Khởi tạo TNV mới</button>
             <button onclick="showTab('form1')" id="btn-form1" class="tab-btn px-4 py-2 bg-white text-slate-700 rounded font-medium border hover:bg-slate-50">1. Đội viên điền buổi TN</button>
@@ -36,8 +38,14 @@
         <div id="tab-init" class="tab-content bg-white p-6 rounded shadow max-w-2xl mx-auto">
             <h2 class="text-lg font-bold text-blue-800 mb-4">Khởi tạo Tình nguyện viên mới</h2>
             <form id="init-form" class="space-y-4">
-                <div><label class="block text-sm font-semibold mb-1">Họ và Tên (*)</label><input type="text" id="init-fullName" required class="w-full border p-2 rounded"></div>
-                <div><label class="block text-sm font-semibold mb-1">Mã Số Sinh Viên (MSSV) (*)</label><input type="text" id="init-studentId" required class="w-full border p-2 rounded"></div>
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Họ và Tên (*)</label>
+                    <input type="text" id="init-fullName" required class="w-full border p-2 rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Mã Số Sinh Viên (MSSV) (*)</label>
+                    <input type="text" id="init-studentId" required class="w-full border p-2 rounded">
+                </div>
                 <button type="submit" class="bg-blue-700 text-white font-bold px-6 py-2 rounded hover:bg-blue-800 w-full">Gửi đăng ký khởi tạo</button>
             </form>
         </div>
@@ -109,8 +117,15 @@
         <div id="tab-summary" class="tab-content hidden bg-white p-6 rounded shadow">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
                 <h2 class="text-lg font-bold text-slate-800">Bảng tổng kết quá trình hoạt động</h2>
+                
+                <!-- THANH NÚT CHỨC NĂNG ADMIN -->
                 <div id="admin-actions-bar" class="hidden flex flex-wrap gap-2">
-                    <button onclick="exportToExcel()" class="bg-emerald-700 text-white font-bold px-4 py-2 rounded hover:bg-emerald-800 text-xs shadow">📊 Xuất Excel</button>
+                    <button onclick="syncDataFromTurso()" class="bg-blue-600 text-white font-bold px-4 py-2 rounded hover:bg-blue-700 text-xs shadow flex items-center gap-1">
+                        🔄 Khôi Phục / Đồng Bộ Turso
+                    </button>
+                    <button onclick="exportToExcel()" class="bg-emerald-700 text-white font-bold px-4 py-2 rounded hover:bg-emerald-800 text-xs shadow">
+                        📊 Xuất Excel
+                    </button>
                 </div>
             </div>
 
@@ -121,24 +136,30 @@
             </div>
 
             <div id="summary-content" class="hidden space-y-6">
-                <!-- KHUNG CHỜ DUYỆT (ĐÃ ĐƯỢC ĐẶT RÕ RÀNG Ở ĐÂY) -->
-                <div id="pending-box" class="hidden border border-amber-300 bg-amber-50 p-4 rounded">
-                    <h3 class="font-bold text-amber-800 text-sm mb-2 uppercase">⏳ Danh sách hồ sơ mới khởi tạo (Chờ duyệt)</h3>
+                
+                <!-- BẢNG DANH SÁCH CHỜ DUYỆT -->
+                <div id="pending-wrapper" class="border-2 border-amber-400 bg-amber-50 p-4 rounded shadow-sm">
+                    <h3 class="font-bold text-amber-900 text-sm mb-2 uppercase flex items-center gap-2">
+                        <span>⏳</span> Danh sách hồ sơ mới khởi tạo (Chờ duyệt)
+                    </h3>
                     <div class="overflow-x-auto">
                         <table class="w-full border-collapse bg-white text-xs">
                             <thead>
-                                <tr class="bg-amber-100 font-bold">
+                                <tr class="bg-amber-200 font-bold text-amber-900">
                                     <th class="p-2">Họ và Tên</th>
                                     <th class="p-2">MSSV</th>
                                     <th class="p-2">Thời gian</th>
-                                    <th class="p-2">Thao tác</th>
+                                    <th class="p-2">Thao tác Admin</th>
                                 </tr>
                             </thead>
-                            <tbody id="pending-tbody"></tbody>
+                            <tbody id="pending-tbody">
+                                <tr><td colspan="4" class="p-3 text-slate-500">Đang tải dữ liệu chờ duyệt từ Turso...</td></tr>
+                            </tbody>
                         </table>
                     </div>
                 </div>
 
+                <!-- BẢNG TỔNG KẾT CHI TIẾT -->
                 <div>
                     <h3 class="font-bold text-slate-700 text-sm mb-2 uppercase">✅ Bảng tổng kết chi tiết Tình nguyện viên</h3>
                     <div class="overflow-x-auto">
@@ -166,10 +187,13 @@
                                     <th class="p-2 bg-emerald-50 w-16">Tổng</th>
                                 </tr>
                             </thead>
-                            <tbody id="summary-tbody"></tbody>
+                            <tbody id="summary-tbody">
+                                <tr><td colspan="14" class="p-4 text-center text-slate-500">Chưa có dữ liệu</td></tr>
+                            </tbody>
                         </table>
                     </div>
                 </div>
+
             </div>
         </div>
     </main>
@@ -280,48 +304,66 @@
 
         async function unlockSummaryTable() {
             const pass = document.getElementById('summary-admin-pass').value.trim();
-            if (!pass) return alert('Nhập mật khẩu!');
-            const res = await fetch('/api/volunteers', { headers: { 'x-admin-password': pass } });
-            if (!res.ok) return alert('Mật khẩu Admin sai!');
+            if (!pass) return alert('Vui lòng nhập mật khẩu Admin!');
             currentAdminPass = pass;
-            rawVolunteersData = await res.json();
-            document.getElementById('admin-lock-box').classList.add('hidden');
-            document.getElementById('summary-content').classList.remove('hidden');
-            document.getElementById('admin-actions-bar').classList.remove('hidden');
-            renderAllTables(rawVolunteersData);
+            await syncDataFromTurso();
+        }
+
+        // CHỨC NĂNG KHÔI PHỤC / ĐỒNG BỘ TRỰC TIẾP TỪ TURSO
+        async function syncDataFromTurso() {
+            if (!currentAdminPass) return alert('Chưa đăng nhập mật khẩu Admin!');
+            try {
+                // Thêm timestamp để cấm cache triệt để
+                const res = await fetch('/api/volunteers?t=' + Date.now(), { 
+                    headers: { 'x-admin-password': currentAdminPass } 
+                });
+                
+                if (!res.ok) return alert('Mật khẩu Admin không đúng hoặc lỗi kết nối!');
+                
+                rawVolunteersData = await res.json();
+
+                document.getElementById('admin-lock-box').classList.add('hidden');
+                document.getElementById('summary-content').classList.remove('hidden');
+                document.getElementById('admin-actions-bar').classList.remove('hidden');
+
+                renderAllTables(rawVolunteersData);
+            } catch (err) {
+                alert("Lỗi tải dữ liệu từ Turso: " + err.message);
+            }
         }
 
         function renderAllTables(data) {
             if (!Array.isArray(data)) data = [];
-            const pendingList = data.filter(v => Number(v.isApproved) === 0 || v.isApproved === '0');
-            const approvedList = data.filter(v => Number(v.isApproved) === 1 || v.isApproved === '1');
 
-            const pendingBox = document.getElementById('pending-box');
+            // Ép kiểu bắt ép duyệt hay chưa
+            const pendingList = data.filter(v => Number(v.isApproved) === 0 || String(v.isApproved) === '0');
+            const approvedList = data.filter(v => Number(v.isApproved) === 1 || String(v.isApproved) === '1');
+
+            // Render danh sách chờ duyệt
             const pendingTbody = document.getElementById('pending-tbody');
-
             if (pendingList.length > 0) {
-                pendingBox.classList.remove('hidden');
                 pendingTbody.innerHTML = pendingList.map(v => `
-                    <tr class="hover:bg-amber-100/50">
-                        <td class="p-2 font-semibold text-left">${v.fullName}</td>
-                        <td class="p-2">${v.studentId}</td>
-                        <td class="p-2">${v.createdAt ? new Date(v.createdAt).toLocaleString('vi-VN') : 'Mới'}</td>
+                    <tr class="hover:bg-amber-100">
+                        <td class="p-2 font-bold text-slate-800 text-left">${v.fullName}</td>
+                        <td class="p-2 font-semibold text-slate-700">${v.studentId}</td>
+                        <td class="p-2 text-slate-500">${v.createdAt ? new Date(v.createdAt).toLocaleString('vi-VN') : 'Mới tạo'}</td>
                         <td class="p-2 space-x-2">
-                            <button onclick="approveRecord(${v.id})" class="bg-emerald-600 text-white px-3 py-1 rounded font-bold hover:bg-emerald-700">Duyệt</button>
-                            <button onclick="deleteVolunteerRecord(${v.id})" class="bg-red-600 text-white px-3 py-1 rounded font-bold hover:bg-red-700">Xóa</button>
+                            <button onclick="approveRecord(${v.id})" class="bg-emerald-600 text-white px-3 py-1 rounded font-bold hover:bg-emerald-700 shadow-sm">✅ Duyệt</button>
+                            <button onclick="deleteVolunteerRecord(${v.id})" class="bg-red-600 text-white px-3 py-1 rounded font-bold hover:bg-red-700 shadow-sm">❌ Xóa</button>
                         </td>
                     </tr>`).join('');
             } else {
-                pendingBox.classList.add('hidden');
+                pendingTbody.innerHTML = `<tr><td colspan="4" class="p-3 text-slate-400 italic">Hiện không có hồ sơ nào chờ duyệt trong Turso.</td></tr>`;
             }
 
-            const tbody = document.getElementById('summary-tbody');
+            // Render bảng tổng kết chi tiết
+            const summaryTbody = document.getElementById('summary-tbody');
             if (approvedList.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="14" class="p-4 text-center text-slate-500">Chưa có hồ sơ nào được duyệt (Hãy bấm Duyệt ở mục Chờ duyệt phía trên)</td></tr>`;
+                summaryTbody.innerHTML = `<tr><td colspan="14" class="p-4 text-center text-slate-500 font-medium">Chưa có hồ sơ nào được duyệt. Bấm nút ✅ Duyệt ở danh sách chờ phía trên!</td></tr>`;
                 return;
             }
 
-            tbody.innerHTML = approvedList.map((v, i) => `
+            summaryTbody.innerHTML = approvedList.map((v, i) => `
                 <tr class="hover:bg-slate-50">
                     <td class="p-2 font-bold">${i + 1}</td>
                     <td class="p-2 font-semibold text-left">${v.fullName}</td>
@@ -344,19 +386,19 @@
             const res = await fetch(`/api/volunteers/${id}/approve`, { method: 'POST', headers: { 'x-admin-password': currentAdminPass } });
             const data = await res.json();
             alert(data.message || data.error);
-            if (res.ok) unlockSummaryTable();
+            if (res.ok) syncDataFromTurso();
         }
 
         async function deleteVolunteerRecord(id) {
-            if (!confirm('Xóa hồ sơ này?')) return;
+            if (!confirm('Bạn có chắc chắn muốn xóa hồ sơ này?')) return;
             const res = await fetch(`/api/volunteers/${id}`, { method: 'DELETE', headers: { 'x-admin-password': currentAdminPass } });
             const data = await res.json();
             alert(data.message || data.error);
-            if (res.ok) unlockSummaryTable();
+            if (res.ok) syncDataFromTurso();
         }
 
         function exportToExcel() {
-            const approvedData = rawVolunteersData.filter(v => Number(v.isApproved) === 1 || v.isApproved === '1');
+            const approvedData = rawVolunteersData.filter(v => Number(v.isApproved) === 1 || String(v.isApproved) === '1');
             const exportRows = approvedData.map((v, i) => ({
                 "STT": i + 1, "Họ tên": v.fullName, "MSSV": v.studentId, "Số buổi TN": (v.activities || []).length
             }));
