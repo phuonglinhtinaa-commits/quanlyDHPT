@@ -11,13 +11,12 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- KHỞI TẠO TURSO CLIENT (HTTP API CHỐNG LỖI MIGRATION 400) ---
+// --- KHỞI TẠO TURSO CLIENT ---
 let turso = null;
 try {
     let dbUrl = (process.env.TURSO_DATABASE_URL || '').trim();
     const dbToken = (process.env.TURSO_AUTH_TOKEN || '').trim();
 
-    // Ép sang giao thức https:// để giao tiếp trực tiếp qua HTTP pipeline của Turso
     if (dbUrl.startsWith('libsql://')) {
         dbUrl = dbUrl.replace('libsql://', 'https://');
     } else if (dbUrl.startsWith('wss://')) {
@@ -31,7 +30,7 @@ try {
             url: dbUrl,
             authToken: dbToken
         });
-        console.log("⚡ [TURSO] Khởi tạo SDK Turso (HTTP mode) thành công với URL:", dbUrl);
+        console.log("⚡ [TURSO] Khởi tạo SDK Turso thành công với URL:", dbUrl);
     } else {
         console.error("❌ [TURSO] Thiếu TURSO_DATABASE_URL hoặc TURSO_AUTH_TOKEN!");
     }
@@ -39,57 +38,64 @@ try {
     console.error("❌ [TURSO] Lỗi kết nối CSDL:", err.message);
 }
 
-// --- TỰ ĐỘNG TẠO BẢNG NẾU CHƯA CÓ ---
+// --- TỰ ĐỘNG TẠO BẢNG AN TOÀN ---
 async function initTables() {
     if (!turso) return;
-    try {
-        await turso.execute(`CREATE TABLE IF NOT EXISTS volunteers (
+
+    const queries = [
+        `CREATE TABLE IF NOT EXISTS volunteers (
             id INTEGER PRIMARY KEY AUTOINCREMENT, 
             fullName TEXT, 
             studentId TEXT, 
             isApproved INTEGER DEFAULT 0, 
             createdAt TEXT
-        )`);
-        await turso.execute(`CREATE TABLE IF NOT EXISTS activities (
+        )`,
+        `CREATE TABLE IF NOT EXISTS activities (
             id INTEGER PRIMARY KEY AUTOINCREMENT, 
             volunteerId INTEGER, 
             jobContent TEXT, 
             date TEXT, 
             createdAt TEXT
-        )`);
-        await turso.execute(`CREATE TABLE IF NOT EXISTS campaigns (
+        )`,
+        `CREATE TABLE IF NOT EXISTS campaigns (
             id INTEGER PRIMARY KEY AUTOINCREMENT, 
             volunteerId INTEGER, 
             campaignName TEXT, 
             createdAt TEXT
-        )`);
-        await turso.execute(`CREATE TABLE IF NOT EXISTS violations (
+        )`,
+        `CREATE TABLE IF NOT EXISTS violations (
             id INTEGER PRIMARY KEY AUTOINCREMENT, 
             volunteerId INTEGER, 
             error TEXT, 
             date TEXT, 
             createdAt TEXT
-        )`);
-        await turso.execute(`CREATE TABLE IF NOT EXISTS achievements (
+        )`,
+        `CREATE TABLE IF NOT EXISTS achievements (
             id INTEGER PRIMARY KEY AUTOINCREMENT, 
             volunteerId INTEGER, 
             content TEXT, 
             createdAt TEXT
-        )`);
-        await turso.execute(`CREATE TABLE IF NOT EXISTS general_notes (
+        )`,
+        `CREATE TABLE IF NOT EXISTS general_notes (
             id INTEGER PRIMARY KEY AUTOINCREMENT, 
             volunteerId INTEGER, 
             content TEXT, 
             createdAt TEXT
-        )`);
-        console.log("✅ [TURSO] Cấu trúc các bảng CSDL đã sẵn sàng!");
-    } catch (err) {
-        console.error("❌ [TURSO LỖI CREATETABLE]:", err.message);
+        )`
+    ];
+
+    for (const sql of queries) {
+        try {
+            await turso.execute(sql);
+        } catch (err) {
+            console.error("❌ [TURSO LỖI CREATETABLE]:", err.message);
+        }
     }
+    console.log("✅ [TURSO] Kiểm tra và khởi tạo các bảng CSDL hoàn tất!");
 }
 initTables();
 
-// --- LẤY TOÀN BỘ DỮ LIỆU TỰ TURSO (RESTORE / SYNC KHÔI PHỤC DỮ LIỆU) ---
+// --- KHÔI PHỤC DỮ LIỆU TỪ TURSO (RESTORE) ---
 app.get('/api/volunteers/restore-from-turso', async (req, res) => {
     if (!turso) return res.status(500).json({ error: "Chưa kết nối Turso" });
     try {
@@ -133,8 +139,7 @@ app.get('/api/volunteers/restore-from-turso', async (req, res) => {
             if (volunteersMap[g.volunteerId]) volunteersMap[g.volunteerId].generalNotes.push(g);
         });
 
-        const volunteersList = Object.values(volunteersMap);
-        res.json({ success: true, data: volunteersList });
+        res.json({ success: true, data: Object.values(volunteersMap) });
     } catch (err) {
         console.error("Lỗi restore từ Turso:", err);
         res.status(500).json({ error: err.message });
@@ -216,7 +221,7 @@ app.delete('/api/volunteers/:id', async (req, res) => {
     }
 });
 
-// --- API THÊM HOẠT ĐỘNG, CHIẾN DỊCH, VI PHẠM, THÀNH TÍCH, GHI CHÚ ---
+// --- THÊM DỮ LIỆU CON (HOẠT ĐỘNG, VI PHẠM, ...) ---
 app.post('/api/volunteers/:id/activities', async (req, res) => {
     const { id } = req.params;
     const { jobContent, date } = req.body;
@@ -287,7 +292,7 @@ app.post('/api/volunteers/:id/general_notes', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- FALLBACK GIAO DIỆN CLIENT ---
+// --- FALLBACK CLIENT ---
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
